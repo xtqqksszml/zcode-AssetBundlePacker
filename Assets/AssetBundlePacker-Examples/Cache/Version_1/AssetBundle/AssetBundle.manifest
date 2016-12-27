@@ -1,0 +1,21 @@
+ManifestFileVersion: 0
+AssetBundleManifest:
+  AssetBundleInfos:
+    Info_0:
+      Name: assets/scenes/simplescene.unityconfig.txt.ab
+      Dependencies: {}
+    Info_1:
+      Name: assets/scenes/simplescene.unity.ab
+      Dependencies: {}
+    Info_2:
+      Name: assets/resources/version_1/models/sphere.ab
+      Dependencies: {}
+    Info_3:
+      Name: assets/resources/version_1/simplescene.ab
+      Dependencies: {}
+    Info_4:
+      Name: assets/resources/version_1/text/text.txt.ab
+      Dependencies: {}
+    Info_5:
+      Name: assets/resources/version_1/texture/tex_1.png.ab
+      Dependencies: {}

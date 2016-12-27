@@ -1,0 +1,66 @@
+﻿/***************************************************************
+ * Copyright 2016 By Zhang Minglin
+ * Author: Zhang Minglin
+ * Create: 2015/11/26
+ * Note  : 协同执行器
+***************************************************************/
+using UnityEngine;
+using System.Collections;
+using UnityEngine.SceneManagement;
+
+namespace zcode
+{
+    /// <summary>
+    ///   协同执行器
+    /// </summary>
+    public class CoroutineExecutor : MonoBehaviour
+    {
+        /// <summary>
+        ///   回调函数
+        /// </summary>
+        public System.Action DoneCallback;
+
+        // Use this for initialization
+        void Start()
+        {
+            //此层次下的所有对象禁止被删除
+            DontDestroyOnLoad(transform.gameObject);
+        }
+
+        // Use this for initialization
+        void Do(AsyncOperation ao, System.Action callback)
+        {
+            DoneCallback = callback;
+            StartCoroutine(_WaitForDone(ao));
+        }
+
+        IEnumerator _WaitForDone(AsyncOperation ao)
+        {
+            if (ao != null)
+            {
+                while (!ao.isDone)
+                    yield return 1;
+            }
+
+            if (DoneCallback != null)
+                DoneCallback();
+
+            Destroy(this.gameObject);
+
+            yield return 0;
+        }
+
+        /// <summary>
+        ///   
+        /// </summary>
+        public static void Create(AsyncOperation ao, System.Action callback)
+        {
+            GameObject go = new GameObject();
+            CoroutineExecutor executor = go.AddComponent<CoroutineExecutor>();
+            if (executor != null)
+            {
+                executor.Do(ao, callback);
+            }
+        }
+    }
+}
