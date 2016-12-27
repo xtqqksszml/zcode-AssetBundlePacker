@@ -2,17 +2,17 @@
 Unity的AssetBundle模块扩展插件，主要目的用于简化AssetBundle打包，提供AssetBundle管理，支持热更新、支持资源包下载等。
 
 ## 主要功能
-	便捷的打包环境，独立的打包编辑窗口
-	多种资源打包方式指定，可视化资源粒度显示，可方便查看资源被AssetBundle打包次数，便于优化。
-	支持场景打包，可支持场景对象动态加载，减小场景大小。
-	AssetBundle压缩功能，支持外部AssetBundle的压缩功能，从而可以取消AssetBundle本身压缩提高AssetBundle加载效率，又可以通过外部压缩减小网络传输时AssetBundle的大小。
-	版本管理功能，支持AssetBundle热更新。
-	资源包功能，并提供PackageDownloader类用于游戏中下载资源包匹配的AssetBundle文件，实现块化资源利用。
-	提供资源加载器与场景加载器，可提供多种加载配置（AssetBundle、Resources、AssetBundleAndResources）。
+* 便捷的打包环境，独立的打包编辑窗口
+* 多种资源打包方式指定，可视化资源粒度显示，可方便查看资源被AssetBundle打包次数，便于优化。
+* 支持场景打包，可支持场景对象动态加载，减小场景大小。
+* AssetBundle压缩功能，支持外部AssetBundle的压缩功能，从而可以取消AssetBundle本身压缩提高AssetBundle加载效率，又可以通过外部压缩减小网络传输时AssetBundle的大小。
+* 版本管理功能，支持AssetBundle热更新。
+* 资源包功能，并提供PackageDownloader类用于游戏中下载资源包匹配的AssetBundle文件，实现块化资源利用。
+* 提供资源加载器与场景加载器，可提供多种加载配置（AssetBundle、Resources、AssetBundleAndResources）。
 
 ## 第三方库
-	* Json:  https://github.com/xtqqksszml/simple-json
-	* 7-Zip: http://7-zip.org/
+	Json:  https://github.com/xtqqksszml/simple-json
+	7-Zip: http://7-zip.org/
 	
 ## 目录结构
 	>Assets
