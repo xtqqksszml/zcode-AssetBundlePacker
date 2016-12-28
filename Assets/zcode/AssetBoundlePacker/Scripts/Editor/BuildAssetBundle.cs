@@ -21,7 +21,7 @@ namespace zcode.AssetBundlePacker
         ///   打包AssetBundle
         /// </summary>
         public static void BuildAllAssetBundlesToTarget(BuildTarget target
-            , BuildAssetBundleOptions options = BuildAssetBundleOptions.DeterministicAssetBundle)
+            , BuildAssetBundleOptions options)
         {
             string manifest_file = EditorCommon.PATH + "/" + Common.MAIN_MANIFEST_FILE_NAME;
             AssetBundleManifest old_manifest = Common.LoadMainManifestByPath(manifest_file);

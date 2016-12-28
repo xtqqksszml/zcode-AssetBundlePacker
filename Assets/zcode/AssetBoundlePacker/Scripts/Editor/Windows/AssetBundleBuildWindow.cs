@@ -262,6 +262,11 @@ namespace zcode.AssetBundlePacker
         private AssetBundleBuild asset_bundle_build_;
 
         /// <summary>
+        /// 打包选项
+        /// </summary>
+        private BuildAssetBundleOptions build_option_ = BuildAssetBundleOptions.DeterministicAssetBundle;
+
+        /// <summary>
         ///   打包方式
         /// </summary>
         enum emBuildType
@@ -405,7 +410,7 @@ namespace zcode.AssetBundlePacker
             if (running)
                 running = SceneConfigTool.GenerateAllSceneConfig(asset_bundle_build_.Data.Scenes);
             if (running)
-                BuildAssetBundle.BuildAllAssetBundlesToTarget(GetBuildTargetType());
+                BuildAssetBundle.BuildAllAssetBundlesToTarget(GetBuildTargetType(), build_option_);
             if (running)
                 LoadAssetBundleGranularityInfo();
 
@@ -456,6 +461,9 @@ namespace zcode.AssetBundlePacker
         void DrawGeneral()
         {
             GUILayout.BeginVertical(GUI.skin.FindStyle("flow background"), GUILayout.MaxHeight(80f));
+            GUILayout.BeginHorizontal();
+            build_option_ = (BuildAssetBundleOptions)EditorGUILayout.EnumPopup("打包选项", build_option_, GUILayout.MinWidth(200f));
+            GUILayout.EndHorizontal();
             GUILayout.BeginHorizontal();
             build_type_ = (emBuildType)EditorGUILayout.EnumPopup("打包方式", build_type_, GUILayout.MinWidth(200f));
             GUILayout.EndHorizontal();
