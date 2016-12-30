@@ -10,6 +10,9 @@ Unity的AssetBundle模块扩展插件，主要目的用于简化AssetBundle打�
 * 资源包功能，并提供PackageDownloader类用于游戏中下载资源包匹配的AssetBundle文件，实现块化资源利用。
 * 提供资源加载器与场景加载器，可提供多种加载配置（AssetBundle、Resources、AssetBundleAndResources）。
 
+## 版本信息
+	Unity: 5.3.1f1
+
 ## 第三方库
 	Json:  https://github.com/xtqqksszml/simple-json
 	7-Zip: http://7-zip.org/
