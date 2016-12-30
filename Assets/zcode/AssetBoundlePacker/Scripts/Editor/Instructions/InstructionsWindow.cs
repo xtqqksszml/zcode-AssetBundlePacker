@@ -33,22 +33,6 @@ public class InstructionsWindow : EditorWindow
       + "插件需手动配置的事项\n"
       + "1. 增加命名为\"" + zcode.AssetBundlePacker.SceneConfigTool.SERIALIZE_SCENE_OBJECT_TAG + "\"的GameObject's Tag（Edit->Project Settings->Tags and Layers）";
 
-	/// <summary>
-    ///   MonoBehaviour.Start
-    /// </summary>
-	void Start () 
-	{
-	
-	}
-	
-	/// <summary>
-    ///   MonoBehaviour.Update
-    /// </summary>
-	void Update () 
-	{
-	
-	}
-
     /// <summary>
     /// 
     /// </summary>

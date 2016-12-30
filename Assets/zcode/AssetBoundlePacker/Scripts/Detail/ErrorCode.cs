@@ -36,5 +36,8 @@ namespace zcode.AssetBundlePacker
         DownloadFailed = 1003,                  // 下载失败
         DownloadMainConfigFileFailed = 1004,    // 主配置文件下载失败
         DownloadAssetBundleFailed = 1005,       // AssetBundle下载失败
+
+        //PackageDownloader
+        InvalidPackageName = 2001,              // 无效的包名
     }
 }

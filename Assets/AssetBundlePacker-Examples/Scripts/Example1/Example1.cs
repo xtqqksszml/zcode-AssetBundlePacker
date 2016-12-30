@@ -15,7 +15,7 @@ public class Example1 : MonoBehaviour
     /// <summary>
     /// 缓存目录
     /// </summary>
-    public const string PATH = "Assets/AssetBundlePacker-Examples/Examples/Cache/Version_1/AssetBundle";
+    public const string PATH = "Assets/AssetBundlePacker-Examples/Cache/Version_1/AssetBundle";
 
     /// <summary>
     /// 下载地址(例如：http://127.0.0.1/)

@@ -15,6 +15,9 @@ namespace zcode.AssetBundlePacker
 {
     public class AssetBundleMenu : MonoBehaviour
     {
+        protected AssetBundleMenu()
+        { }
+
         #region Step 1
         [MenuItem("AssetBundle/Step-1 打包AssetBundle", false, 51)]
         static void BuildAssetBundle_Step1()

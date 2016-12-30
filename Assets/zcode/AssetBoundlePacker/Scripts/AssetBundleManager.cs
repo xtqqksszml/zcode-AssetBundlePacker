@@ -59,18 +59,25 @@ namespace zcode.AssetBundlePacker
         /// <summary>
         ///   常驻的AssetBundle
         /// </summary>
-        private Dictionary<string, AssetBundle> assetbundle_permanent_ = new Dictionary<string, AssetBundle>();
+        private Dictionary<string, AssetBundle> assetbundle_permanent_;
 
         /// <summary>
         ///   缓存的AssetBundle
         /// </summary>
-        private Dictionary<string, AssetBundle> assetbundle_cache_ = new Dictionary<string, AssetBundle>();
+        private Dictionary<string, AssetBundle> assetbundle_cache_;
+
+        protected AssetBundleManager()
+        { }
 
         /// <summary>
         ///   启动(仅内部启用)
         /// </summary>
         void Launch()
         {
+            if (assetbundle_permanent_ == null)
+                assetbundle_permanent_ = new Dictionary<string, AssetBundle>();
+            if (assetbundle_cache_ == null)
+                assetbundle_cache_ = new Dictionary<string, AssetBundle>();
             IsReady = false;
             ErrorCode = emErrorCode.None;
             StopAllCoroutines();

@@ -85,7 +85,7 @@ namespace zcode.AssetBundlePacker
         /// <summary>
         ///   资源包名
         /// </summary>
-        private List<string> packages_name_ = new List<string>();
+        private List<string> packages_name_;
 
         /// <summary>
         ///   
@@ -96,6 +96,12 @@ namespace zcode.AssetBundlePacker
         ///   资源下载器
         /// </summary>
         private AssetBundleDownloader ab_download_;
+
+        /// <summary>
+        /// 
+        /// </summary>
+        protected PackageDownloader()
+        { }
 
         /// <summary>
         ///   开始下载
@@ -210,6 +216,12 @@ namespace zcode.AssetBundlePacker
                 yield break;
 
             UpdateCompleteValue(0f, 0f);
+
+            if(packages_name_ == null)
+            {
+                Error(emErrorCode.InvalidPackageName);
+                yield break;
+            }
 
             //收集所有需要下载的AssetBundle
             List<string> ab_list = new List<string>();
