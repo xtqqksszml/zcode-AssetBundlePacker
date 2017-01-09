@@ -34,5 +34,8 @@ Unity的AssetBundle模块扩展插件，主要目的用于简化AssetBundle打�
 		更新器的用法
 		包下载器的用法
 		
+## 联系作者
+	邮箱：xtqqksszml@163.com
+		
 ## 版权声明
 	插件使用 Apache License 2.0 协议.
