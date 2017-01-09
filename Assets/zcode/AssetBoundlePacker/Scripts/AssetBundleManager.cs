@@ -59,31 +59,20 @@ namespace zcode.AssetBundlePacker
         /// <summary>
         ///   常驻的AssetBundle
         /// </summary>
-        private Dictionary<string, AssetBundle> assetbundle_permanent_ = new Dictionary<string, AssetBundle>();
+        private Dictionary<string, AssetBundle> assetbundle_permanent_;
 
         /// <summary>
         ///   缓存的AssetBundle
         /// </summary>
-        private Dictionary<string, AssetBundle> assetbundle_cache_ = new Dictionary<string, AssetBundle>();
+        private Dictionary<string, AssetBundle> assetbundle_cache_;
 
         /// <summary>
-        ///   启动(仅内部启用)
+        /// 临时的AssetBundle
         /// </summary>
-        void Launch()
-        {
-            IsReady = false;
-            ErrorCode = emErrorCode.None;
-            StopAllCoroutines();
-            StartCoroutine(Preprocess());
-        }
+        private Dictionary<string, AssetBundle> assetbundle_temporary_;
 
-        /// <summary>
-        /// 
-        /// </summary>
-        void ShutDown()
-        {
-            UnloadAllAssetBundle(true);
-        }
+        protected AssetBundleManager()
+        { }
 
         /// <summary>
         /// 重启
@@ -114,7 +103,7 @@ namespace zcode.AssetBundlePacker
         /// <summary>
         ///   加载一个资源
         /// </summary>
-        public T LoadAsset<T>(string asset, bool unload_assetbundle_cache = true)
+        public T LoadAsset<T>(string asset, bool unload_assetbundle = true, bool unload_all_loaded_objects = false)
                 where T : Object
         {
             try
@@ -138,8 +127,7 @@ namespace zcode.AssetBundlePacker
                         }
                     }
 
-                    if (unload_assetbundle_cache)
-                        UnloadAssetBundleCache(false);
+                    DisposeAssetBundleTemporary(unload_assetbundle, unload_all_loaded_objects);
                 }
 
                 return result;
@@ -155,7 +143,7 @@ namespace zcode.AssetBundlePacker
         /// <summary>
         ///   异步加载一个资源
         /// </summary>
-        public AssetBundleRequest LoadAssetAsync<T>(string asset, bool unload_assetbundle_cache = true)
+        public AssetBundleRequest LoadAssetAsync<T>(string asset, bool unload_assetbundle = true, bool unload_all_loaded_objects = false)
                 where T : Object
         {
             try
@@ -179,8 +167,7 @@ namespace zcode.AssetBundlePacker
                         }
                     }
 
-                    if (unload_assetbundle_cache)
-                        StartCoroutine(_WaitUnloadAssetBundleCacheFor(result));
+                    DisposeAssetBundleTemporary(unload_assetbundle, unload_all_loaded_objects);
                 }
 
                 return result;
@@ -199,7 +186,8 @@ namespace zcode.AssetBundlePacker
         [System.Obsolete("Use AssetBundleManager.LoadSceneAsync, Because this function has bug!(UnityEngine.SceneManagement.SceneManager.LoadScene is not synchronization completed! )")]
         public bool LoadScene(string scene_name
                                 , LoadSceneMode mode = LoadSceneMode.Single
-                                , bool unload_assetbundle_cache = true)
+                                , bool unload_assetbundle = true
+                                , bool unload_all_loaded_objects = false)
         {
             try
             {
@@ -221,8 +209,7 @@ namespace zcode.AssetBundlePacker
 
                     UnityEngine.SceneManagement.SceneManager.LoadScene(scene_name);
 
-                    if (unload_assetbundle_cache)
-                        UnloadAssetBundleCache(false);
+                    DisposeAssetBundleTemporary(unload_assetbundle, unload_all_loaded_objects);
                 }
 
                 return true;
@@ -240,7 +227,8 @@ namespace zcode.AssetBundlePacker
         /// </summary>
         public AsyncOperation LoadSceneAsync(string scene_name
                                                 , LoadSceneMode mode = LoadSceneMode.Single
-                                                , bool unload_assetbundle_cache = true)
+                                                , bool unload_assetbundle = true
+                                                , bool unload_all_loaded_objects = false)
         {
             try
             {
@@ -258,8 +246,7 @@ namespace zcode.AssetBundlePacker
                     }
 
                     AsyncOperation result = UnityEngine.SceneManagement.SceneManager.LoadSceneAsync(scene_name, mode);
-                    if (unload_assetbundle_cache)
-                        StartCoroutine(_WaitUnloadAssetBundleCacheFor(result));
+                    DisposeAssetBundleTemporary(unload_assetbundle, unload_all_loaded_objects);
                     return result;
                 }
             }
@@ -385,37 +372,42 @@ namespace zcode.AssetBundlePacker
         }
 
         /// <summary>
-        /// 初始化
+        ///   释放常驻的AssetBundle
         /// </summary>
-        private bool PreprocessFinished()
+        public void UnloadAllAssetBundle(bool unload_all_loaded_objects)
         {
-            //MainManifest
-            MainManifest = Common.LoadMainManifest();
-            if (MainManifest == null)
+            UnloadAssetBundleCache(unload_all_loaded_objects);
+            UnloadAssetBundlePermanent(unload_all_loaded_objects);
+        }
+
+        /// <summary>
+        ///   释放缓存的AssetBundle
+        /// </summary>
+        public void UnloadAssetBundleCache(bool unload_all_loaded_objects)
+        {
+            var itr = assetbundle_cache_.Values.GetEnumerator();
+            while (itr.MoveNext())
             {
-                Error(emErrorCode.LoadMainManifestFailed
-                    , "Can't load MainManifest file!");
-                return false;
+                itr.Current.Unload(unload_all_loaded_objects);
             }
+            itr.Dispose();
+            assetbundle_cache_.Clear();
+        }
 
-            // ResourcesManifest
-            ResourcesManifest = Common.LoadResourcesManifest();
-            if (ResourcesManifest == null)
-            {
-                Error(emErrorCode.LoadResourcesManiFestFailed
-                    , "Can't load ResourcesInfo file!");
-                return false;
-            }
+        /// <summary>
+        ///   释放缓存的AssetBundle
+        /// </summary>
+        public void UnloadAssetBundle(string assetbundlename, bool unload_all_loaded_objects)
+        {
+            AssetBundle ab = null;
+            if (assetbundle_permanent_.TryGetValue(assetbundlename, out ab))
+                assetbundle_permanent_.Remove(assetbundlename);
+            else if (assetbundle_cache_.TryGetValue(assetbundlename, out ab))
+                assetbundle_cache_.Remove(assetbundlename);
+            else if (assetbundle_temporary_.TryGetValue(assetbundlename, out ab))
+                assetbundle_temporary_.Remove(assetbundlename);
 
-            // ResourcesPackages
-            ResourcesPackages = Common.LoadResourcesPackages();
-
-            //记录当前版本号
-            Version = ResourcesManifest.Data.Version;
-            //标记已准备好
-            IsReady = ErrorCode == emErrorCode.None;
-
-            return true;
+            ab.Unload(unload_all_loaded_objects);
         }
 
         /// <summary>
@@ -462,6 +454,10 @@ namespace zcode.AssetBundlePacker
             {
                 ab = assetbundle_cache_[assetbundlename];
             }
+            else if (assetbundle_temporary_.ContainsKey(assetbundlename))
+            {
+                ab = assetbundle_temporary_[assetbundlename];
+            }
             else
             {
                 string assetbundle_path = Common.PATH + "/" + assetbundlename;
@@ -474,7 +470,7 @@ namespace zcode.AssetBundlePacker
                     if (permanent)
                         assetbundle_permanent_.Add(assetbundlename, ab);
                     else
-                        assetbundle_cache_.Add(assetbundlename, ab);
+                        assetbundle_temporary_.Add(assetbundlename, ab);
                 }
             }
 
@@ -482,53 +478,56 @@ namespace zcode.AssetBundlePacker
         }
 
         /// <summary>
-        ///   释放缓存的AssetBundle
-        /// </summary>
-        void UnloadAssetBundle(AssetBundle ab, bool unloadAllLoadedObjects)
-        {
-            if (assetbundle_cache_.ContainsKey(ab.name))
-                assetbundle_cache_.Remove(ab.name);
-            if (assetbundle_permanent_.ContainsKey(ab.name))
-                assetbundle_permanent_.Remove(ab.name);
-
-            ab.Unload(unloadAllLoadedObjects);
-        }
-
-        /// <summary>
         ///   释放常驻的AssetBundle
         /// </summary>
-        void UnloadAssetBundlePermanent(bool unloadAllLoadedObjects)
+        void UnloadAssetBundlePermanent(bool unload_all_loaded_objects)
         {
             var itr = assetbundle_permanent_.Values.GetEnumerator();
             while (itr.MoveNext())
             {
-                itr.Current.Unload(unloadAllLoadedObjects);
+                itr.Current.Unload(unload_all_loaded_objects);
             }
             itr.Dispose();
             assetbundle_permanent_.Clear();
         }
 
         /// <summary>
-        ///   释放缓存的AssetBundle
+        /// 释放临时的AssetBundle
         /// </summary>
-        public void UnloadAssetBundleCache(bool unloadAllLoadedObjects)
+        void UnloadAssetBundleTemporary(bool unload_all_loaded_objects)
         {
-            var itr = assetbundle_cache_.Values.GetEnumerator();
+            var itr = assetbundle_temporary_.Values.GetEnumerator();
             while (itr.MoveNext())
             {
-                itr.Current.Unload(unloadAllLoadedObjects);
+                itr.Current.Unload(unload_all_loaded_objects);
             }
             itr.Dispose();
-            assetbundle_cache_.Clear();
+            assetbundle_temporary_.Clear();
         }
 
         /// <summary>
-        ///   释放常驻的AssetBundle
+        /// 保存到缓存中
         /// </summary>
-        public void UnloadAllAssetBundle(bool unloadAllLoadedObjects)
+        void SaveAssetBundleToCache()
         {
-            UnloadAssetBundleCache(unloadAllLoadedObjects);
-            UnloadAssetBundlePermanent(unloadAllLoadedObjects);
+            var itr = assetbundle_temporary_.GetEnumerator();
+            while (itr.MoveNext())
+            {
+                assetbundle_cache_.Add(itr.Current.Key, itr.Current.Value);
+            }
+            itr.Dispose();
+            assetbundle_temporary_.Clear();
+        }
+
+        /// <summary>
+        /// 处理临时AssetBundle
+        /// </summary>
+        void DisposeAssetBundleTemporary(bool unload_assetbundle, bool unload_all_loaded_objects)
+        {
+            if (unload_assetbundle)
+                UnloadAssetBundleTemporary(unload_all_loaded_objects);
+            else
+                SaveAssetBundleToCache();
         }
 
         /// <summary>
@@ -541,6 +540,31 @@ namespace zcode.AssetBundlePacker
             string ms = string.IsNullOrEmpty(message) ?
                 ErrorCode.ToString() : ErrorCode.ToString() + " - " + message;
             Debug.LogError(ms);
+        }
+
+        /// <summary>
+        ///   启动(仅内部启用)
+        /// </summary>
+        void Launch()
+        {
+            if (assetbundle_permanent_ == null)
+                assetbundle_permanent_ = new Dictionary<string, AssetBundle>();
+            if (assetbundle_cache_ == null)
+                assetbundle_cache_ = new Dictionary<string, AssetBundle>();
+            if (assetbundle_temporary_ == null)
+                assetbundle_temporary_ = new Dictionary<string, AssetBundle>();
+            IsReady = false;
+            ErrorCode = emErrorCode.None;
+            StopAllCoroutines();
+            StartCoroutine(Preprocess());
+        }
+
+        /// <summary>
+        /// 关闭
+        /// </summary>
+        void ShutDown()
+        {
+            UnloadAllAssetBundle(true);
         }
 
         /// <summary>
@@ -594,6 +618,40 @@ namespace zcode.AssetBundlePacker
             }
 
             PreprocessFinished();
+        }
+
+        /// <summary>
+        /// 初始化
+        /// </summary>
+        bool PreprocessFinished()
+        {
+            //MainManifest
+            MainManifest = Common.LoadMainManifest();
+            if (MainManifest == null)
+            {
+                Error(emErrorCode.LoadMainManifestFailed
+                    , "Can't load MainManifest file!");
+                return false;
+            }
+
+            // ResourcesManifest
+            ResourcesManifest = Common.LoadResourcesManifest();
+            if (ResourcesManifest == null)
+            {
+                Error(emErrorCode.LoadResourcesManiFestFailed
+                    , "Can't load ResourcesInfo file!");
+                return false;
+            }
+
+            // ResourcesPackages
+            ResourcesPackages = Common.LoadResourcesPackages();
+
+            //记录当前版本号
+            Version = ResourcesManifest.Data.Version;
+            //标记已准备好
+            IsReady = ErrorCode == emErrorCode.None;
+
+            return true;
         }
 
         /// <summary>

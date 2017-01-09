@@ -102,6 +102,12 @@ namespace zcode.AssetBundlePacker
         private AssetBundleDownloader ab_download_;
 
         /// <summary>
+        /// 
+        /// </summary>
+        protected Updater()
+        { }
+
+        /// <summary>
         ///   开始更新
         /// </summary>
         public bool StartUpdate(List<string> url_group)

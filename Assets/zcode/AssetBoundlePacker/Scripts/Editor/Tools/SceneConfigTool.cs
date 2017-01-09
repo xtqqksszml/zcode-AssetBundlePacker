@@ -15,7 +15,7 @@ using UnityEditor.SceneManagement;
 namespace zcode.AssetBundlePacker
 {
 
-    public class SceneConfigTool : MonoBehaviour
+    public class SceneConfigTool
     {
         /// <summary>
         ///   需序列化且加载场景时才重新加载的GameObject的Tag
