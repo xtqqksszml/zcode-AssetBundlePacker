@@ -34,8 +34,10 @@ namespace zcode.AssetBundlePacker
         /// </summary>
         public static ILoadPattern LoadPattern = new DefaultLoadPattern();
 
+       
         /// <summary>
         ///   加载一个资源
+        /// <param name="asset">资源局部路径（"Assets/..."）</param>
         /// </summary>
         public static T Load<T>(string asset)
                 where T : Object
@@ -57,11 +59,22 @@ namespace zcode.AssetBundlePacker
                     return result;
             }
 
+#if UNITY_EDITOR 
+            if (LoadPattern.ResourcesLoadPattern == emLoadPattern.EditorAsset
+                || LoadPattern.ResourcesLoadPattern == emLoadPattern.All)
+            {
+                result = ResourcesManager.LoadAssetAtPath<T>(asset);
+                if (result != null)
+                    return result;
+            }
+#endif
+
             return result;
         }
 
         /// <summary>
         ///   加载一个Resources下资源
+        /// <param name="asset">资源局部路径（"Assets/..."）</param>
         /// </summary>
         public static T LoadResources<T>(string asset)
             where T : Object
@@ -73,5 +86,17 @@ namespace zcode.AssetBundlePacker
             T a = Resources.Load<T>(asset);
             return a;
         }
+
+#if UNITY_EDITOR 
+        /// <summary>
+        ///   加载一个Resources下资源
+        /// <param name="asset">资源局部路径（"Assets/..."）</param>
+        /// </summary>
+        public static T LoadAssetAtPath<T>(string asset)
+            where T : Object
+        {
+            return UnityEditor.AssetDatabase.LoadAssetAtPath<T>(asset);
+        }
+#endif
     }
 }
