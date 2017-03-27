@@ -30,7 +30,7 @@ namespace zcode.AssetBundlePacker
                 /// <summary>
                 ///   名称
                 /// </summary>
-                public readonly string Name;
+                public string Name;
 
                 /// <summary>
                 ///   是否文件夹
@@ -46,6 +46,13 @@ namespace zcode.AssetBundlePacker
                 ///   子对象
                 /// </summary>
                 public List<Element> Children;
+
+                /// <summary>
+                /// 
+                /// </summary>
+                public Element()
+                {
+                }
 
                 /// <summary>
                 /// 
