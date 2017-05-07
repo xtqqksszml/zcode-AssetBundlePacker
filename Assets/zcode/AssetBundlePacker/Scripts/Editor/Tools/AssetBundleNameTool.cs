@@ -24,22 +24,32 @@ namespace zcode.AssetBundlePacker
         /// </summary>
         public static bool RunningAssetBundleNameTool(AssetBundleBuild build)
         {
-            cancel_running_nametool_ = false;
-            float total = (float)build.Data.Assets.Root.Count();
-            float current = 0;
+            try
+            {
+                cancel_running_nametool_ = false;
+                float total = (float)build.Data.Assets.Root.Count();
+                float current = 0;
 
-            //从默认路径
-            ChangeAssetBundleName(EditorCommon.ASSET_START_PATH, build.Data.Assets.Root, (name) =>
-                {
-                    //进度条提示
-                    current += 1.0f;
-                    float progress = current / total;
-                    if (EditorUtility.DisplayCancelableProgressBar("正在生成AssetBundleName", "Change " + name, progress))
-                        cancel_running_nametool_ = true;
-                });
+                //从默认路径
+                ChangeAssetBundleName(EditorCommon.ASSET_START_PATH, build.Data.Assets.Root, (name) =>
+                    {
+                        //进度条提示
+                        current += 1.0f;
+                        float progress = current / total;
+                        if (EditorUtility.DisplayCancelableProgressBar("正在生成AssetBundleName", "Change " + name, progress))
+                            cancel_running_nametool_ = true;
+                    });
+
+                EditorUtility.ClearProgressBar();
+                return !cancel_running_nametool_;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError(ex.Message);
+            }
+
             EditorUtility.ClearProgressBar();
-
-            return !cancel_running_nametool_;
+            return false;
         }
 
         /// <summary>
@@ -53,9 +63,12 @@ namespace zcode.AssetBundlePacker
                 return;
             if (element == null)
                 return;
-
+            
             DirectoryInfo dir = new DirectoryInfo(folder_full_name);
             if (!dir.Exists)
+                return;
+
+            if ((emAssetBundleNameRule)element.Rule == emAssetBundleNameRule.Ignore)
                 return;
 
             //遍历文件,并设置其AssetBundleName
@@ -65,7 +78,7 @@ namespace zcode.AssetBundlePacker
                 AssetBundleBuildData.AssetBuild.Element child = element.FindFileElement(f.Name);
                 emAssetBundleNameRule my_rule = child != null ? (emAssetBundleNameRule)child.Rule : emAssetBundleNameRule.None;
 
-                if (!EditorCommon.IsIgnoreFile(f.Name))
+                if (!EditorCommon.IsIgnoreFile(f.Name) && my_rule != emAssetBundleNameRule.Ignore)
                 {
                     if (my_rule == emAssetBundleNameRule.SingleFile)
                         SetAssetBundleName(f.FullName);

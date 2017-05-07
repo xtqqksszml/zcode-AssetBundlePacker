@@ -20,11 +20,14 @@ namespace zcode
         {
             try
             {
-                string str = null;
-                if (File.Exists(file_name))
-                    str = File.ReadAllText(file_name);
+                if (!string.IsNullOrEmpty(file_name))
+                {
+                    string str = null;
+                    if (File.Exists(file_name))
+                        str = File.ReadAllText(file_name);
 
-                return ReadFromString<T>(ref data, str);
+                    return ReadFromString<T>(ref data, str);
+                }
             }
             catch (System.Exception ex)
             {

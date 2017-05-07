@@ -17,6 +17,16 @@ namespace zcode.AssetBundlePacker
     public class AssetBundleBuildWindow : EditorWindow
     {
         /// <summary>
+        ///   打包方式
+        /// </summary>
+        enum emBuildType
+        {
+            StandaloneWindows,
+            Android,
+            IOS,
+        }
+
+        /// <summary>
         /// 
         /// </summary>
         class AssetNodeGroup : GUILayoutMultiSelectGroup.NodeGroup
@@ -170,6 +180,8 @@ namespace zcode.AssetBundlePacker
                 if (node.Element == null)
                     return null;
 
+                bool is_ignore = node.Element != null && node.Element.Rule == (int)emAssetBundleNameRule.Ignore;
+                GUI.color = is_ignore ? Color.grey : Color.white;
                 GUILayoutMultiSelectGroup.OperateResult result = null;
                 if (node.Element.IsFolder)
                     result = DrawAssetNodeFolder(node, space);
@@ -177,7 +189,7 @@ namespace zcode.AssetBundlePacker
                     result = DrawAssetNodeFile(node, space);
 
                 //绘制子节点
-                if (node.Expand)
+                if (!is_ignore && node.Expand)
                 {
                     if (node.Children != null)
                     {
@@ -189,6 +201,7 @@ namespace zcode.AssetBundlePacker
                     }
                 }
 
+                GUI.color = Color.white;
                 return result;
             }
 
@@ -267,17 +280,6 @@ namespace zcode.AssetBundlePacker
         private BuildAssetBundleOptions build_option_ = BuildAssetBundleOptions.DeterministicAssetBundle;
 
         /// <summary>
-        ///   打包方式
-        /// </summary>
-        enum emBuildType
-        {
-            StandaloneWindows,
-            Android,
-            IOS,
-        }
-        private emBuildType build_type_;
-
-        /// <summary>
         /// 
         /// </summary>
         private GUILayoutMultiSelectGroup gui_multi_select_;
@@ -348,7 +350,7 @@ namespace zcode.AssetBundlePacker
             //载入ResourcesManifest文件
             ResourcesManifest resoureces_manifest = new ResourcesManifest();
             resoureces_manifest.Load(EditorCommon.RESOURCES_MANIFEST_FILE_PATH);
-            if (resoureces_manifest.Data.AssetBundles.Count == 0)
+            if (resoureces_manifest.Data.AssetBundles == null || resoureces_manifest.Data.AssetBundles.Count == 0)
                 return;
 
             //载入AssetBunbleManifest
@@ -402,31 +404,39 @@ namespace zcode.AssetBundlePacker
         /// <summary>
         /// 打包AssetBundle
         /// </summary>
-        void BuildingAssetBundle()
+        void BuildingAssetBundle(emBuildType build_type)
         {
-            bool running = true;
-            SaveData();
-            running = AssetBundleNameTool.RunningAssetBundleNameTool(asset_bundle_build_);
-            if (running)
-                running = SceneConfigTool.GenerateAllSceneConfig(asset_bundle_build_.Data.Scenes);
-            if (running)
-                BuildAssetBundle.BuildAllAssetBundlesToTarget(GetBuildTargetType(), build_option_);
-            if (running)
-                LoadAssetBundleGranularityInfo();
+            try
+            {
+                bool running = true;
+                SaveData();
+                running = AssetBundleNameTool.RunningAssetBundleNameTool(asset_bundle_build_);
+                if (running)
+                    running = SceneConfigTool.GenerateAllSceneConfig(asset_bundle_build_.Data.Scenes);
+                if (running)
+                    BuildAssetBundle.BuildAllAssetBundlesToTarget(GetBuildTargetType(build_type), build_option_);
+                if (running)
+                    LoadAssetBundleGranularityInfo();
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError(ex.Message);
+            }
 
             SceneConfigTool.RestoreAllScene(asset_bundle_build_.Data.Scenes);
+			EditorUtility.ClearProgressBar();
         }
 
         /// <summary>
         /// 打包目标平台
         /// </summary>
-        BuildTarget GetBuildTargetType()
+        BuildTarget GetBuildTargetType(emBuildType build_type)
         {
-            if (build_type_ == emBuildType.StandaloneWindows)
+            if (build_type == emBuildType.StandaloneWindows)
                 return BuildTarget.StandaloneWindows;
-            else if (build_type_ == emBuildType.Android)
+            else if (build_type == emBuildType.Android)
                 return BuildTarget.Android;
-            else if (build_type_ == emBuildType.IOS)
+            else if (build_type == emBuildType.IOS)
                 return BuildTarget.iOS;
 
             return BuildTarget.StandaloneWindows;
@@ -462,10 +472,10 @@ namespace zcode.AssetBundlePacker
         {
             GUILayout.BeginVertical(GUI.skin.FindStyle("flow background"), GUILayout.MaxHeight(80f));
             GUILayout.BeginHorizontal();
-            build_option_ = (BuildAssetBundleOptions)EditorGUILayout.EnumPopup("打包选项", build_option_, GUILayout.MinWidth(200f));
+            EditorGUILayout.LabelField("输出位置", EditorCommon.BUILD_PATH);
             GUILayout.EndHorizontal();
             GUILayout.BeginHorizontal();
-            build_type_ = (emBuildType)EditorGUILayout.EnumPopup("打包方式", build_type_, GUILayout.MinWidth(200f));
+            build_option_ = (BuildAssetBundleOptions)EditorGUILayout.EnumPopup("打包选项", build_option_, GUILayout.MinWidth(200f));
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
@@ -482,9 +492,22 @@ namespace zcode.AssetBundlePacker
 
             GUILayout.BeginHorizontal();
             GUILayout.Space(20f);
-            bool is_build = GUILayout.Button("开始打包");
+            bool is_build_win = GUILayout.Button("Windows平台版本 - 打包");
             GUILayout.Space(20f);
             GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Space(20f);
+            bool is_build_android = GUILayout.Button(" Android平台版本 - 打包");
+            GUILayout.Space(20f);
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Space(20f);
+            bool is_build_ios = GUILayout.Button("      IOS平台版本 - 打包");
+            GUILayout.Space(20f);
+            GUILayout.EndHorizontal();
+
 
             GUILayout.EndVertical();
 
@@ -492,8 +515,18 @@ namespace zcode.AssetBundlePacker
                 SaveData();
             if (is_running_ab_name_tool)
                 AssetBundleNameTool.RunningAssetBundleNameTool(asset_bundle_build_);
-            if (is_build)
-                BuildingAssetBundle();
+            if (is_build_win)
+            {
+                BuildingAssetBundle(emBuildType.StandaloneWindows);
+            }
+            else if (is_build_android)
+            {
+                BuildingAssetBundle(emBuildType.Android);
+            }
+            else if (is_build_ios)
+            {
+                BuildingAssetBundle(emBuildType.IOS);
+            }
         }
 
         /// <summary>

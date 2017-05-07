@@ -167,7 +167,7 @@ namespace zcode.AssetBundlePacker
         }
 
         /// <summary>
-        ///   载入ResourcesMnifest
+        ///   载入ResourcesManifest
         /// </summary>
         public static ResourcesManifest LoadResourcesManifestByPath(string full_name)
         {

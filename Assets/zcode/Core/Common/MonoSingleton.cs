@@ -12,6 +12,9 @@ using System.Collections;
 /// </summary>
 public abstract class MonoSingleton<T> : MonoBehaviour where T : MonoSingleton<T>
 {
+    /// <summary>
+    ///   单例实例
+    /// </summary>
 	private static T instance_ = null;
 	public static T Instance
 	{
@@ -21,17 +24,26 @@ public abstract class MonoSingleton<T> : MonoBehaviour where T : MonoSingleton<T
 			{
 				instance_ = GameObject.FindObjectOfType(typeof(T)) as T;
 				if (instance_ == null)
-				{
 					instance_ = new GameObject("SingletonOf" + typeof(T).ToString(), typeof(T)).GetComponent<T>();
-					DontDestroyOnLoad(instance_);
-				}
+
+                DontDestroyOnLoad(instance_);
 			}
 			return instance_;
 		}
 	}
 
-	//确保在程序退出时销毁实例。
-	protected void OnApplicationQuit()
+    /// <summary>
+    ///  创建单例实例
+    /// </summary>
+    public static T CreateSingleton()
+    {
+        return Instance;
+    }
+
+	/// <summary>
+    ///   确保在程序退出时销毁实例。
+	/// </summary>
+	protected virtual void OnApplicationQuit()
 	{
 		instance_ = null;
 	}

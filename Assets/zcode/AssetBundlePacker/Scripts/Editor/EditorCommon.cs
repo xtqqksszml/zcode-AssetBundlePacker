@@ -18,6 +18,7 @@ namespace zcode.AssetBundlePacker
         None,               // 无
         SingleFile,         // 单个文件
         Folder,             // 文件夹
+        Ignore,             // 忽略文件或者文件夹
     }
 
     /// <summary>
@@ -26,14 +27,14 @@ namespace zcode.AssetBundlePacker
     public static class EditorCommon
     {
         /// <summary>
-        ///   编辑器环境下AssetBundle路径
+        ///   编辑器环境下默认打包路径
         /// </summary>
-        public static readonly string PATH = Application.dataPath + "/" + Common.ROOT_FOLDER_NAME;
+        public static readonly string BUILD_PATH = System.IO.Directory.GetCurrentDirectory() + "\\" + Common.ROOT_FOLDER_NAME;
 
         /// <summary>
         ///   编辑器环镜下资源起始路径
         /// </summary>
-        public static readonly string ASSET_START_PATH = ResourcesManager.RESOURCES_PATH;
+        public static readonly string ASSET_START_PATH = Application.dataPath;
 
         /// <summary>
         ///   编辑器环镜下场景起始路径
@@ -43,17 +44,17 @@ namespace zcode.AssetBundlePacker
         /// <summary>
         ///   编辑器环镜下主Manifest保存路径
         /// </summary>
-        public static readonly string MAIN_MANIFEST_FILE_PATH = PATH + "/" + Common.MAIN_MANIFEST_FILE_NAME;
+        public static readonly string MAIN_MANIFEST_FILE_PATH = BUILD_PATH + "/" + Common.MAIN_MANIFEST_FILE_NAME;
 
         /// <summary>
         ///   编辑器环镜下ResourcesManifest保存路径
         /// </summary>
-        public static readonly string RESOURCES_MANIFEST_FILE_PATH = PATH + "/" + Common.RESOURCES_MANIFEST_FILE_NAME;
+        public static readonly string RESOURCES_MANIFEST_FILE_PATH = BUILD_PATH + "/" + Common.RESOURCES_MANIFEST_FILE_NAME;
 
         /// <summary>
         ///   编辑器环镜下ResourcesPackage保存路径
         /// </summary>
-        public static readonly string RESOURCES_PACKAGE_FILE_PATH = PATH + "/" + Common.RESOURCES_PACKAGE_FILE_NAME;
+        public static readonly string RESOURCES_PACKAGE_FILE_PATH = BUILD_PATH + "/" + Common.RESOURCES_PACKAGE_FILE_NAME;
 
         /// <summary>
         ///   忽略的文件类型(后缀名)
@@ -108,9 +109,9 @@ namespace zcode.AssetBundlePacker
         /// </summary>
         public static bool IsIgnoreFolder(string full_name)
         {
+            string name = System.IO.Path.GetFileName(full_name);
             foreach (string ignore in IGNORE_FOLDER_ARRAY)
             {
-                string name = System.IO.Path.GetFileName(full_name);
                 if (name == ignore)
                     return true;
             }
@@ -123,7 +124,7 @@ namespace zcode.AssetBundlePacker
         /// </summary>
         public static AssetBundle LoadAssetBundleFromName(string assetbundlename)
         {
-            string assetbundle_path = PATH + "/" + assetbundlename;
+            string assetbundle_path = BUILD_PATH + "/" + assetbundlename;
             if (System.IO.File.Exists(assetbundle_path))
             {
                 return AssetBundle.LoadFromFile(assetbundle_path);

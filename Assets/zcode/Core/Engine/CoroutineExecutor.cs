@@ -27,7 +27,9 @@ namespace zcode
             DontDestroyOnLoad(transform.gameObject);
         }
 
-        // Use this for initialization
+        /// <summary>
+        ///   执行
+        /// </summary>
         void Do(AsyncOperation ao, System.Action callback)
         {
             DoneCallback = callback;
@@ -51,6 +53,29 @@ namespace zcode
         }
 
         /// <summary>
+        ///   执行
+        /// </summary>
+        void Do(IEnumerator routine, System.Action callback)
+        {
+            DoneCallback = callback;
+            StartCoroutine(_WaitForDone(routine));
+        }
+        IEnumerator _WaitForDone(IEnumerator routine)
+        {
+            if (routine != null)
+            {
+                yield return routine;
+            }
+
+            if (DoneCallback != null)
+                DoneCallback();
+
+            Destroy(this.gameObject);
+
+            yield return 0;
+        }
+
+        /// <summary>
         ///   
         /// </summary>
         public static void Create(AsyncOperation ao, System.Action callback)
@@ -60,6 +85,19 @@ namespace zcode
             if (executor != null)
             {
                 executor.Do(ao, callback);
+            }
+        }
+
+        /// <summary>
+        ///   
+        /// </summary>
+        public static void Create(IEnumerator routine, System.Action callback)
+        {
+            GameObject go = new GameObject();
+            CoroutineExecutor executor = go.AddComponent<CoroutineExecutor>();
+            if (executor != null)
+            {
+                executor.Do(routine, callback);
             }
         }
     }

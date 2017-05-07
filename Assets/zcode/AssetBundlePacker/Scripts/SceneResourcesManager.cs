@@ -48,8 +48,8 @@ namespace zcode.AssetBundlePacker
                                             , LoadSceneMode mode = LoadSceneMode.Single)
         {
             ao = null;
-            if (LoadPattern.ResourcesLoadPattern == emLoadPattern.AssetBundle
-                || LoadPattern.ResourcesLoadPattern == emLoadPattern.All)
+            if (LoadPattern.SceneLoadPattern == emLoadPattern.AssetBundle
+                || LoadPattern.SceneLoadPattern == emLoadPattern.All)
             {
                 ao = AssetBundleManager.Instance.LoadSceneAsync(scene_name, mode);
                 if (ao != null)
@@ -62,8 +62,8 @@ namespace zcode.AssetBundlePacker
                     return true;
                 }
             }
-            if (LoadPattern.ResourcesLoadPattern == emLoadPattern.Original
-                || LoadPattern.ResourcesLoadPattern == emLoadPattern.All)
+            if (LoadPattern.SceneLoadPattern == emLoadPattern.Original
+                || LoadPattern.SceneLoadPattern == emLoadPattern.All)
             {
                 if (!Application.CanStreamedLevelBeLoaded(scene_name))
                     return false;

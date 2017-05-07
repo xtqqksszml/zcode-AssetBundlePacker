@@ -10,6 +10,7 @@ using UnityEngine.SceneManagement;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 
 namespace zcode.AssetBundlePacker
 {
@@ -537,9 +538,10 @@ namespace zcode.AssetBundlePacker
         {
             ErrorCode = ec;
 
-            string ms = string.IsNullOrEmpty(message) ?
-                ErrorCode.ToString() : ErrorCode.ToString() + " - " + message;
-            Debug.LogError(ms);
+            StringBuilder sb = new StringBuilder("[AssetBundleError] - ");
+            sb.Append(ErrorCode.ToString());
+            if (!string.IsNullOrEmpty(message)) { sb.Append("\n"); sb.Append(message); }
+            Debug.LogWarning(sb.ToString());
         }
 
         /// <summary>

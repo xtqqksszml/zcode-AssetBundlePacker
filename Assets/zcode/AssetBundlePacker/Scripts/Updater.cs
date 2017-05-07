@@ -404,24 +404,30 @@ namespace zcode.AssetBundlePacker
             }
 
             //标记旧的本地资源
-            var resource_manifest_itr = old_resourcesmanifest.Data.AssetBundles.GetEnumerator();
-            while (resource_manifest_itr.MoveNext())
+            if(old_resourcesmanifest.Data != null && old_resourcesmanifest.Data.AssetBundles != null)
             {
-                if (resource_manifest_itr.Current.Value.IsNative)
+                var resource_manifest_itr = old_resourcesmanifest.Data.AssetBundles.GetEnumerator();
+                while (resource_manifest_itr.MoveNext())
                 {
-                    string name = resource_manifest_itr.Current.Value.AssetBundleName;
-                    _SetDictionaryBit(ref temp_dic, name, old_version_native_bit);
+                    if (resource_manifest_itr.Current.Value.IsNative)
+                    {
+                        string name = resource_manifest_itr.Current.Value.AssetBundleName;
+                        _SetDictionaryBit(ref temp_dic, name, old_version_native_bit);
+                    }
                 }
             }
 
             //标记新的本地资源
-            resource_manifest_itr = new_resourcesmanifest.Data.AssetBundles.GetEnumerator();
-            while (resource_manifest_itr.MoveNext())
+            if (new_resourcesmanifest.Data != null && new_resourcesmanifest.Data.AssetBundles != null)
             {
-                if (resource_manifest_itr.Current.Value.IsNative)
+                var resource_manifest_itr = new_resourcesmanifest.Data.AssetBundles.GetEnumerator();
+                while (resource_manifest_itr.MoveNext())
                 {
-                    string name = resource_manifest_itr.Current.Value.AssetBundleName;
-                    _SetDictionaryBit(ref temp_dic, name, new_version_native_bit);
+                    if (resource_manifest_itr.Current.Value.IsNative)
+                    {
+                        string name = resource_manifest_itr.Current.Value.AssetBundleName;
+                        _SetDictionaryBit(ref temp_dic, name, new_version_native_bit);
+                    }
                 }
             }
 

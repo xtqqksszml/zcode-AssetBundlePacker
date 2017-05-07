@@ -104,28 +104,31 @@ namespace zcode.AssetBundlePacker
         {
             AssetTable = new Dictionary<string, List<string>>();
             SceneTable = new Dictionary<string, string>();
-            var itr = Data.AssetBundles.Values.GetEnumerator();
-            while (itr.MoveNext())
+            if(Data.AssetBundles != null)
             {
-                List<string> list = itr.Current.Assets;
-                for (int i = 0; i < list.Count; ++i)
+                var itr = Data.AssetBundles.Values.GetEnumerator();
+                while (itr.MoveNext())
                 {
-                    if (!AssetTable.ContainsKey(list[i]))
+                    List<string> list = itr.Current.Assets;
+                    for (int i = 0; i < list.Count; ++i)
                     {
-                        AssetTable.Add(list[i], new List<string>());
+                        if (!AssetTable.ContainsKey(list[i]))
+                        {
+                            AssetTable.Add(list[i], new List<string>());
+                        }
+
+                        AssetTable[list[i]].Add(itr.Current.AssetBundleName);
                     }
 
-                    AssetTable[list[i]].Add(itr.Current.AssetBundleName);
+                    List<string> scenes = itr.Current.Scenes;
+                    for (int i = 0; i < scenes.Count; ++i)
+                    {
+                        if (!SceneTable.ContainsKey(scenes[i]))
+                            SceneTable.Add(scenes[i], itr.Current.AssetBundleName);
+                    }
                 }
-
-                List<string> scenes = itr.Current.Scenes;
-                for (int i = 0; i < scenes.Count; ++i)
-                {
-                    if (!SceneTable.ContainsKey(scenes[i]))
-                        SceneTable.Add(scenes[i], itr.Current.AssetBundleName);
-                }
+                itr.Dispose();
             }
-            itr.Dispose();
         }
 
         /// <summary>
@@ -202,6 +205,8 @@ namespace zcode.AssetBundlePacker
         /// </summary>
         public bool IsPermanent(string assetbundlename)
         {
+            if (Data.AssetBundles == null)
+                return false;
             if (Data.AssetBundles.ContainsKey(assetbundlename))
                 return Data.AssetBundles[assetbundlename].IsPermanent;
 

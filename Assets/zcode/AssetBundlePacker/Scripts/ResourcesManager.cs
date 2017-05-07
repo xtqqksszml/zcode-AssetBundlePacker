@@ -6,6 +6,7 @@
 ***************************************************************/
 using UnityEngine;
 using System.Collections;
+using System.IO;
 
 namespace zcode.AssetBundlePacker
 {
@@ -44,6 +45,16 @@ namespace zcode.AssetBundlePacker
         {
             T result = null;
 
+#if UNITY_EDITOR
+            if (LoadPattern.ResourcesLoadPattern == emLoadPattern.EditorAsset
+                || LoadPattern.ResourcesLoadPattern == emLoadPattern.All)
+            {
+                result = ResourcesManager.LoadAssetAtPath<T>(asset);
+                if (result != null)
+                    return result;
+            }
+#endif
+
             if (LoadPattern.ResourcesLoadPattern == emLoadPattern.AssetBundle
                 || LoadPattern.ResourcesLoadPattern == emLoadPattern.All)
             {
@@ -58,16 +69,6 @@ namespace zcode.AssetBundlePacker
                 if (result != null)
                     return result;
             }
-
-#if UNITY_EDITOR 
-            if (LoadPattern.ResourcesLoadPattern == emLoadPattern.EditorAsset
-                || LoadPattern.ResourcesLoadPattern == emLoadPattern.All)
-            {
-                result = ResourcesManager.LoadAssetAtPath<T>(asset);
-                if (result != null)
-                    return result;
-            }
-#endif
 
             return result;
         }
@@ -87,6 +88,51 @@ namespace zcode.AssetBundlePacker
             return a;
         }
 
+        /// <summary>
+        ///   文本文件加载
+        /// <param name="file_name">全局路径</param>
+        /// </summary>
+        public static string LoadTextFile(string file_name)
+        {
+            try
+            {
+                if(!string.IsNullOrEmpty(file_name))
+                {
+                    if (File.Exists(file_name))
+                        return File.ReadAllText(file_name);
+                }
+               
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError(ex.Message);
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        ///   二进制文件加载
+        /// <param name="file_name">全局路径</param>
+        /// </summary>
+        public static byte[] LoadByteFile(string file_name)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(file_name))
+                {
+                    if (File.Exists(file_name))
+                        return File.ReadAllBytes(file_name);
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError(ex.Message);
+            }
+
+            return null;
+        }
+       
 #if UNITY_EDITOR 
         /// <summary>
         ///   加载一个Resources下资源

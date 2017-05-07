@@ -37,17 +37,55 @@ namespace zcode
         }
 
         /// <summary>
+        ///   判断是否是可忽略的扩展
+        /// </summary>
+        public static bool IsIgnoreFile(string file_name, string[] ignore_extensions)
+        {
+            if (ignore_extensions == null)
+                return false;
+
+            string extension = System.IO.Path.GetExtension(file_name);
+            for (int i = 0; i < ignore_extensions.Length; ++i)
+            {
+                if (extension == ignore_extensions[i])
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        ///   判断是否需要忽略
+        /// </summary>
+        public static bool IsIgnoreFolder(string full_name, string[] ignore_folders)
+        {
+            if (ignore_folders == null)
+                return false;
+
+            string name = System.IO.Path.GetFileName(full_name);
+            foreach (string ignore in ignore_folders)
+            {
+                if (name == ignore)
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// 拷贝原目录下所有文件和文件夹至目标目录
         /// </summary>
-        public static bool CopyDirectoryAllChildren(string scr_folder, string dest_folder)
+        public static bool CopyDirectoryAllChildren(string scr_folder
+                                                    , string dest_folder
+                                                    , string[] ignore_extensions = null
+                                                    , string[] ignore_folders = null
+                                                    , bool is_cover = false
+                                                    , System.Action<string> notify_callback = null)
         {
             try
             {
-                if (!Directory.Exists(dest_folder))
-                {
-                    Directory.CreateDirectory(dest_folder);
-                    File.SetAttributes(dest_folder, File.GetAttributes(scr_folder));
-                }
+                if (IsIgnoreFile(scr_folder, ignore_folders))
+                    return true;
 
                 if (dest_folder[dest_folder.Length - 1] != Path.DirectorySeparatorChar)
                     dest_folder = dest_folder + Path.DirectorySeparatorChar;
@@ -55,15 +93,36 @@ namespace zcode
                 string[] files = Directory.GetFiles(scr_folder);
                 foreach (string file in files)
                 {
-                    if (File.Exists(dest_folder + Path.GetFileName(file)))
+                    string full_name = dest_folder + Path.GetFileName(file);
+
+                    if (IsIgnoreFile(full_name, ignore_extensions))
                         continue;
-                    File.Copy(file, dest_folder + Path.GetFileName(file), true);
+
+                    if (File.Exists(full_name))
+                    {
+                        if (!is_cover)
+                            continue;
+
+                        File.Delete(full_name);
+                    }
+
+                    if (!Directory.Exists(dest_folder))
+                    {
+                        Directory.CreateDirectory(dest_folder);
+                        File.SetAttributes(dest_folder, File.GetAttributes(scr_folder));
+                    }
+
+                    File.Copy(file, full_name, true);
+
+                    if (notify_callback != null)
+                        notify_callback(full_name);
                 }
 
                 string[] dirs = Directory.GetDirectories(scr_folder);
                 foreach (string dir in dirs)
                 {
-                    CopyDirectoryAllChildren(dir, dest_folder + Path.GetFileName(dir));
+                    CopyDirectoryAllChildren(dir, dest_folder + Path.GetFileName(dir)
+                                            , ignore_extensions, ignore_folders, is_cover, notify_callback);
                 }
             }
             catch (Exception ex)
@@ -93,8 +152,9 @@ namespace zcode
         /// <param name="length">写入长度.</param>
         public static void WriteBytesToFile(string path, byte[] bytes, int length)
         {
-            //创建文件夹
-            Directory.CreateDirectory(Path.GetDirectoryName(path));
+            string directory = Path.GetDirectoryName(path);
+            if (!Directory.Exists(directory))
+                Directory.CreateDirectory(directory);
 
             FileInfo t = new FileInfo(path);
             using (Stream sw = t.Open(FileMode.Create, FileAccess.ReadWrite))
@@ -212,11 +272,6 @@ namespace zcode
                     while (w.isDone == false)
                         yield return null;
 
-                    //保证路径存在
-                    string directory = Path.GetDirectoryName(dest);
-                    if (!Directory.Exists(directory))
-                        Directory.CreateDirectory(directory);
-
                     zcode.FileHelper.WriteBytesToFile(dest, w.bytes, w.bytes.Length);
                 }
                 else
@@ -298,11 +353,12 @@ namespace zcode
             absolute_path = absolute_path.Replace('\\', '/');
             int last_idx = absolute_path.LastIndexOf(root_path);
             if (last_idx < 0)
-                last_idx = absolute_path.ToLower().LastIndexOf(root_path.ToLower());
-            if (last_idx < 0)
                 return absolute_path;
 
             int start = last_idx + root_path.Length;
+            if (absolute_path[start] == '/')
+                start += 1;
+
             int length = absolute_path.Length - start;
             return absolute_path.Substring(start, length);
         }

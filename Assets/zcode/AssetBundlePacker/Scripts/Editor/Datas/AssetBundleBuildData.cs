@@ -78,6 +78,8 @@ namespace zcode.AssetBundlePacker
                 /// </summary>
                 public Element FindFolderElement(string name)
                 {
+                    if (Children == null)
+                        return null;
                     return Children.Find((elem) =>
                     {
                         return elem.Name == name && elem.IsFolder;
@@ -89,6 +91,8 @@ namespace zcode.AssetBundlePacker
                 /// </summary>
                 public Element FindFileElement(string name)
                 {
+                    if (Children == null)
+                        return null;
                     return Children.Find((elem) =>
                     {
                         return elem.Name == name && !elem.IsFolder;
