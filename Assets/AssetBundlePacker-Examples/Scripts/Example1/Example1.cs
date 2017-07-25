@@ -179,7 +179,7 @@ public class Example1 : MonoBehaviour
                            , 0f, updater_.CurrentStateCompleteValue
                            , 0f, updater_.CurrentStateTotalValue);
 
-            if (!updater_.IsDone && !updater_.IsFailed)
+            if (!updater_.IsDone && updater_.IsFailed)
             {
                 if (GUI.Button(new Rect(0, 80f, Screen.width, 20f), "中断更新"))
                 {
