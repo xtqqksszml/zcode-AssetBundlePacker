@@ -140,7 +140,18 @@ namespace zcode.AssetBundlePacker
                         Granularity = 0;
                 }
             }
+            public string fullname()
+            {
+                string temp = Element.Name;
+                AssetNode anode = Parent;
+                while (anode != null)
+                {
+                          temp = anode.Element.Name+ "/"+temp;
+                    anode = anode.Parent;
 
+                }
+                return temp;
+            }
             /// <summary>
             /// 选中指定ID区间展开的节点
             /// </summary>
@@ -336,7 +347,11 @@ namespace zcode.AssetBundlePacker
                 {
                     var asset_node = gui_multi_select_.SelectNodes[i] as AssetNode;
                     asset_node.Element.Rule = (int)rule;
+                    AssetBundleNameTool.rjChangeAssetBundleName(asset_node.fullname(),asset_node.Element);
+                    //Debug.LogError(asset_node.fullname());
                 }
+                SaveData();
+
             }
         }
 
@@ -410,7 +425,7 @@ namespace zcode.AssetBundlePacker
             {
                 bool running = true;
                 SaveData();
-                running = AssetBundleNameTool.RunningAssetBundleNameTool(asset_bundle_build_);
+                //running = AssetBundleNameTool.RunningAssetBundleNameTool(asset_bundle_build_);
                 if (running)
                     running = SceneConfigTool.GenerateAllSceneConfig(asset_bundle_build_.Data.Scenes);
                 if (running)

@@ -123,6 +123,35 @@ namespace zcode.AssetBundlePacker
             AssetDatabase.Refresh();
         }
 
+
+
+       public static void rjChangeAssetBundleName(string folder_full_name
+                                         , AssetBundleBuildData.AssetBuild.Element element
+                                         , System.Action<string> change_callback = null)
+        {
+            if (element == null)
+                return;
+
+            if ((emAssetBundleNameRule)element.Rule == emAssetBundleNameRule.SingleFile)
+            {
+                SetAssetBundleName(folder_full_name);
+            }
+            else if ((emAssetBundleNameRule)element.Rule == emAssetBundleNameRule.None)
+            {
+                ClearAssetBundleName(folder_full_name);
+            }
+            else if ((emAssetBundleNameRule)element.Rule == emAssetBundleNameRule.Folder)
+            {
+                if (!EditorCommon.IsIgnoreFolder(folder_full_name))
+                {
+                    SetAssetBundleName(folder_full_name);
+                }
+            }
+            //刷新
+            AssetDatabase.Refresh();
+        }
+
+
         /// <summary>
         ///   设置AssetBundleName
         /// </summary>
