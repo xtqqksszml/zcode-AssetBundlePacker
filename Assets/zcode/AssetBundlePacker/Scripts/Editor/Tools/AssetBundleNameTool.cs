@@ -147,6 +147,10 @@ namespace zcode.AssetBundlePacker
                     SetAssetBundleName(folder_full_name);
                 }
             }
+            else if ((emAssetBundleNameRule)element.Rule == emAssetBundleNameRule.Clear)
+            {
+                ClearFolderAssetBundleName(folder_full_name,element);
+            }
             //刷新
             AssetDatabase.Refresh();
         }
@@ -193,6 +197,51 @@ namespace zcode.AssetBundlePacker
                 importer.assetBundleName = "";
                 importer.SaveAndReimport();
             }
+        }
+
+        public static void ClearFolderAssetBundleName(string folder_full_name, AssetBundleBuildData.AssetBuild.Element element)
+        {
+            DirectoryInfo dir = new DirectoryInfo(folder_full_name);
+            if (!dir.Exists)
+                return;
+
+            if ((emAssetBundleNameRule)element.Rule == emAssetBundleNameRule.Ignore)
+                return;
+
+            //遍历文件,并设置其AssetBundleName
+            FileInfo[] all_files = dir.GetFiles();
+            foreach (var f in all_files)
+            {
+                AssetBundleBuildData.AssetBuild.Element child = element.FindFileElement(f.Name);
+                emAssetBundleNameRule my_rule = child != null ? (emAssetBundleNameRule)child.Rule : emAssetBundleNameRule.None;
+
+                if (!EditorCommon.IsIgnoreFile(f.Name) && my_rule != emAssetBundleNameRule.Ignore)
+                {
+                       ClearAssetBundleName(f.FullName);
+                       child.Rule = (int)emAssetBundleNameRule.None;
+                }
+            }
+
+            //遍历文件夹
+            DirectoryInfo[] all_dirs = dir.GetDirectories();
+            foreach (DirectoryInfo d in all_dirs)
+            {
+                if (!EditorCommon.IsIgnoreFolder(d.Name))
+                {
+                    AssetBundleBuildData.AssetBuild.Element child = element.FindFolderElement(d.Name);
+                    emAssetBundleNameRule my_rule = child != null ? (emAssetBundleNameRule)child.Rule : emAssetBundleNameRule.None;
+                    ClearAssetBundleName(d.FullName);
+                    child.Rule = (int)emAssetBundleNameRule.None;
+                    ClearFolderAssetBundleName(d.FullName, child);
+                }
+            }
+
+            //刷新
+            AssetDatabase.Refresh();
+
+
+
+
         }
 
         /// <summary>
