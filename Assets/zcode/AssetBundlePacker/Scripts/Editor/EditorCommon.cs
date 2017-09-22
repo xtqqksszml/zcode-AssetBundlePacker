@@ -19,6 +19,8 @@ namespace zcode.AssetBundlePacker
         SingleFile,         // 单个文件
         Folder,             // 文件夹
         Ignore,             // 忽略文件或者文件夹
+        Clear,              //清空目录下所有bundlename
+
     }
 
     /// <summary>
