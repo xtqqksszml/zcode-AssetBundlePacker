@@ -132,23 +132,8 @@ namespace zcode.AssetBundlePacker
             AssetImporter importer = AssetImporter.GetAtPath(full_name);
             if (importer != null)
             {
-                string str = full_name.ToLower();
-                importer.assetBundleName = str + Common.EXTENSION;
-                importer.SaveAndReimport();
-            }
-        }
-
-        /// <summary>
-        ///   设置AssetBundleName
-        /// </summary>
-        public static void SetAssetBundleName(string full_name, string assetBundleName)
-        {
-            full_name = EditorCommon.AbsoluteToRelativePath(full_name);
-            AssetImporter importer = AssetImporter.GetAtPath(full_name);
-            if (importer != null)
-            {
-                importer.assetBundleName = assetBundleName;
-                importer.SaveAndReimport();
+                string str = EditorCommon.ConvertToAssetBundleName(full_name.ToLower());
+                importer.SetAssetBundleNameAndVariant(str, "");
             }
         }
 

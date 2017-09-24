@@ -48,7 +48,12 @@ namespace zcode.AssetBundlePacker
         {
             get
             {
+#if UNITY_EDITOR
+                return emLoadPattern.EditorAsset;
+#else
                 return emLoadPattern.All;
+#endif
+
             }
         }
 
@@ -59,7 +64,11 @@ namespace zcode.AssetBundlePacker
         {
             get
             {
+#if UNITY_EDITOR
+                return emLoadPattern.EditorAsset;
+#else
                 return emLoadPattern.All;
+#endif
             }
         }
     }

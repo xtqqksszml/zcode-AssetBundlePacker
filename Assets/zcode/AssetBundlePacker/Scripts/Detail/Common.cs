@@ -15,7 +15,7 @@ namespace zcode.AssetBundlePacker
         /// <summary>
         ///   AssetBundle后缀名
         /// </summary>
-        public const string EXTENSION = ".ab";
+        public const string EXTENSION = "_ab";
 
         /// <summary>
         /// 

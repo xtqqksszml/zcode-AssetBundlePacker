@@ -165,6 +165,37 @@ namespace zcode.AssetBundlePacker
                 {
                     return Name.GetHashCode();
                 }
+
+                /// <summary>
+                /// 排序
+                /// 1.优先显示文件夹(以字符顺序排序)
+                /// 2.其次显示文件(以字符顺序排序)
+                /// </summary>
+                public void SortChildren()
+                {
+                    if(Children != null && Children.Count > 1)
+                    {
+                        Children.Sort(_ComparisonElement);
+                    }
+                }
+
+                int _ComparisonElement(Element x, Element y)
+                {
+                    if((x.IsFolder && y.IsFolder) || (!x.IsFolder && !y.IsFolder))
+                    {
+                        return string.Compare(x.Name, y.Name, StringComparison.Ordinal);
+                    }
+                    else if(x.IsFolder)
+                    {
+                        return -1;
+                    }
+                    else if (y.IsFolder)
+                    {
+                        return 1;
+                    }
+
+                    return -1;
+                }
             }
 
             public Element Root;
@@ -282,6 +313,7 @@ namespace zcode.AssetBundlePacker
                             if (child != null)
                                 result.Add(child);
                         }
+                        result.SortChildren();
                     }
                 }
                 else if (File.Exists(path))
@@ -406,6 +438,12 @@ namespace zcode.AssetBundlePacker
                             string full_name = path + "/" + pair.Key;
                             element.Add(GenerateAssetBundleRuleData(full_name, (emAssetBundleNameRule)element.Rule));
                         }
+                    }
+
+                    if((folder_dic != null && folder_dic.Count > 0) 
+                        || (file_dic != null && file_dic.Count > 0))
+                    {
+                        element.SortChildren();
                     }
                 }
             }

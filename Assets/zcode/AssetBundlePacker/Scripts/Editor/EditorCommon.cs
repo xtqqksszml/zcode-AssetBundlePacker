@@ -155,5 +155,18 @@ namespace zcode.AssetBundlePacker
             int length = path.Length - start;
             return path.Substring(start, length);
         }
+
+        /// <summary>
+        /// 得到合适的AssetBundleName
+        /// </summary>
+        public static string ConvertToAssetBundleName(string fullPath)
+        {
+            if (string.IsNullOrEmpty(fullPath))
+                return fullPath;
+
+            int position = fullPath.LastIndexOf(".");
+            fullPath = position > -1 ? fullPath.Substring(0, position) : fullPath;
+            return fullPath + Common.EXTENSION;
+        }
     }
 }

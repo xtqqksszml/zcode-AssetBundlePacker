@@ -48,6 +48,26 @@ namespace zcode.AssetBundlePacker
                                             , LoadSceneMode mode = LoadSceneMode.Single)
         {
             ao = null;
+
+#if UNITY_EDITOR
+            if (LoadPattern.SceneLoadPattern == emLoadPattern.EditorAsset
+                || LoadPattern.SceneLoadPattern == emLoadPattern.All)
+            {
+                if (!Application.CanStreamedLevelBeLoaded(scene_name))
+                    return false;
+
+                ao = UnityEngine.SceneManagement.SceneManager.LoadSceneAsync(scene_name, mode);
+                if (ao != null)
+                {
+                    CoroutineExecutor.Create(ao, () =>
+                    {
+                        if (callback != null) callback(scene_name);
+                    });
+                    return true;
+                }
+            }
+#endif
+
             if (LoadPattern.SceneLoadPattern == emLoadPattern.AssetBundle
                 || LoadPattern.SceneLoadPattern == emLoadPattern.All)
             {
