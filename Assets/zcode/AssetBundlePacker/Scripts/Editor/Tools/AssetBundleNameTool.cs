@@ -133,7 +133,9 @@ namespace zcode.AssetBundlePacker
             if (importer != null)
             {
                 string str = EditorCommon.ConvertToAssetBundleName(full_name.ToLower());
-                importer.SetAssetBundleNameAndVariant(str, "");
+                importer.assetBundleName = str;
+                importer.assetBundleVariant = "";
+                importer.SaveAndReimport();
             }
         }
 
