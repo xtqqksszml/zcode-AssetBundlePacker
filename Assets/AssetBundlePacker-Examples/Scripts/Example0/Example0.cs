@@ -110,7 +110,7 @@ public class Example0 : MonoBehaviour
     void OnGUI_Example()
     {
         //AssetBundleManager全局单例实例化后会自动启动，此处等待其启动完毕
-        if(!AssetBundleManager.Instance.WaitForLaunch())
+        if (!AssetBundleManager.Instance.WaitForLaunch())
         {
             GUI.Label(new Rect(0f, 0f, 200f, 20f), "AssetBundlePacker is launching！");
             return;
@@ -120,7 +120,7 @@ public class Example0 : MonoBehaviour
         if(AssetBundleManager.Instance.IsReady)
         { 
             //启动成功
-            GUI.Label(new Rect(0f, 0f, Screen.width, 20f), "AssetBundlePacker launch succeed, Version is" + AssetBundleManager.Instance.Version);
+            GUI.Label(new Rect(0f, 0f, Screen.width, 20f), "AssetBundlePacker launch succeed, Version is" + AssetBundleManager.Instance.strVersion);
 
             bool load_text = GUI.Button(new Rect(0f, 30f, 300f, 30f), "例子 - 加载文本资源");
             bool load_tex = GUI.Button(new Rect(0f, 60f, 300f, 30f), "例子 - 加载纹理资源");

@@ -162,7 +162,7 @@ public class Example2 : MonoBehaviour {
     void OnGUI_Example_Ready()
     {
         //启动成功
-        GUI.Label(new Rect(0f, 0f, Screen.width, 20f), "AssetBundlePacker launch succeed, Version is " + AssetBundleManager.Instance.Version);
+        GUI.Label(new Rect(0f, 0f, Screen.width, 20f), "AssetBundlePacker launch succeed, Version is " + AssetBundleManager.Instance.strVersion);
         //下载地址
         GUI.Label(new Rect(0f, 20f, 100f, 20f), "下载地址：");
         URL = GUI.TextField(new Rect(100f, 20f, Screen.width - 100f, 20f), URL);

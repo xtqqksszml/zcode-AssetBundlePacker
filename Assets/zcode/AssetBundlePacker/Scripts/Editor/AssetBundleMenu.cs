@@ -41,17 +41,5 @@ namespace zcode.AssetBundlePacker
             ResourcesPackageWindow.Open();
         }
         #endregion
-
-        [MenuItem("AssetBundle/Tools/Set Selection AssetBundleName")]
-        static void SetSelectionAssetBundleName()
-        {
-            AssetBundleNameTool.SetSelectionAssetBundleName();
-        }
-
-        [MenuItem("AssetBundle/Tools/Clear Selection AssetBundleName")]
-        static void ClearSelectionAssetBundleName()
-        {
-            AssetBundleNameTool.ClearSelectionAssetBundleName();
-        }
     }
 }

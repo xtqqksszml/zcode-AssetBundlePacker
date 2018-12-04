@@ -18,10 +18,12 @@ namespace zcode.AssetBundlePacker
         ParameterError = 1,                     // 参数错误
         TimeOut = 2,                            // 超时
         PreprocessError = 3,                    // 预处理错误
+        DiskFull = 4,                           // 存储空间已满
+        WriteException = 5,                     // 写入异常
 
         //Load
         LoadMainManifestFailed = 101,           // 载入AssetBundleManifest错误
-        LoadResourcesManiFestFailed = 102,      // 载入ResourcesManifest错误
+        LoadResourcesManifestFailed = 102,      // 载入ResourcesManifest错误
         LoadResourcesPackagesFailed = 103,      // 载入ResourcesPackages错误
         LoadNewMainManifestFailed = 104,        // 载入新的AssetBundleManifest错误
         LoadNewResourcesManiFestFailed = 105,   // 载入新的ResourcesManifest错误

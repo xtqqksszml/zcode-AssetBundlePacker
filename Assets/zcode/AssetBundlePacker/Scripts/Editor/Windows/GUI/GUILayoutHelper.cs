@@ -69,5 +69,17 @@ namespace zcode.AssetBundlePacker
             if (!forceOn && !state) GUILayout.Space(3f);
             return state;
         }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        static public bool Toggle(bool value, string text, bool disabled, params GUILayoutOption[] options)
+        {
+            if (disabled) { EditorGUI.BeginDisabledGroup(true); }
+            bool result = GUILayout.Toggle(value, text, options);
+            if (disabled) { EditorGUI.EndDisabledGroup(); }
+
+            return result;
+        }
     }
 }

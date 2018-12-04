@@ -40,7 +40,9 @@ namespace zcode.AssetBundlePacker
                 {
                     CopySceneToBackup(scene);
                     GenerateSceneConfig(scene);
+                    //设置场景配置文件
                     AssetBundleNameTool.SetAssetBundleName(SceneConfig.GetSceneConfigPath(scene));
+                    //设置场景文件
                     AssetBundleNameTool.SetAssetBundleName(scene);
                 }
                 else
@@ -48,7 +50,6 @@ namespace zcode.AssetBundlePacker
                     DeleteSceneConfig(scene);
                     AssetBundleNameTool.ClearAssetBundleName(scene);
                 }
-
 
                 current += 1.0f;
                 float progress = current / total;
@@ -58,7 +59,6 @@ namespace zcode.AssetBundlePacker
                     break;
                 }
             }
-
             EditorUtility.ClearProgressBar();
 
             return !cancel;

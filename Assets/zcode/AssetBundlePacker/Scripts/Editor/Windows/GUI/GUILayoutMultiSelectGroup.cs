@@ -34,7 +34,7 @@ public class GUILayoutMultiSelectGroup
         /// <summary>
         /// 渲染
         /// </summary>
-        public abstract OperateResult Draw();
+        public abstract OperateResult Draw(float width);
     }
 
     /// <summary>
@@ -45,7 +45,7 @@ public class GUILayoutMultiSelectGroup
         /// <summary>
         /// 渲染
         /// </summary>
-        public abstract OperateResult Draw();
+        public abstract OperateResult Draw(float width);
 
         /// <summary>
         /// 根据索引区间选中指定数量的节点
@@ -204,12 +204,12 @@ public class GUILayoutMultiSelectGroup
     /// <summary>
     /// 
     /// </summary>
-    public OperateResult Draw(bool alwaysShowHorizontal = false, bool alwaysShowVertical = false)
+    public OperateResult Draw(float width, bool alwaysShowHorizontal = false, bool alwaysShowVertical = false)
     {
         scroll_ = GUILayout.BeginScrollView(scroll_, alwaysShowHorizontal, alwaysShowVertical);
         OperateResult result = null;
         if (Group != null)
-            result = Group.Draw();
+            result = Group.Draw(width);
         GUILayout.EndScrollView();
        
         if (result != null)

@@ -6,6 +6,7 @@
 ***************************************************************/
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 
 namespace zcode.AssetBundlePacker
@@ -28,6 +29,11 @@ namespace zcode.AssetBundlePacker
         public const string ROOT_FOLDER_NAME = "AssetBundle";
 
         /// <summary>
+        /// 项目资源根路径名称
+        /// </summary>
+        public const string PROJECT_ASSET_ROOT_NAME = "Assets";
+
+        /// <summary>
         ///   常驻根路径
         ///   此路径主要存放所有游戏中所需使用的AssetBundle、其它配置文件
         /// </summary>
@@ -46,9 +52,15 @@ namespace zcode.AssetBundlePacker
         public static readonly string CACHE_PATH = PATH + "/Cache";
 
         /// <summary>
+        ///   更新器缓存路径
+        ///   此路径主要存放临时文件（下载，拷贝缓存等）
+        /// </summary>
+        public static readonly string UPDATER_CACHE_PATH = PATH + "/UpdaterCache";
+
+        /// <summary>
         ///   DownloadCache文件路径
         /// </summary>
-        public static readonly string DOWNLOADCACHE_FILE_PATH = CACHE_PATH + "/DownloadCache.cfg";
+        public static readonly string DOWNLOADCACHE_FILE_PATH = UPDATER_CACHE_PATH + "/DownloadCache.cfg";
 
         /// <summary>
         ///   主Manifest文件名称（必须存在）
@@ -66,15 +78,33 @@ namespace zcode.AssetBundlePacker
         public const string RESOURCES_PACKAGE_FILE_NAME = "ResourcesPackage.cfg";
 
         /// <summary>
-        /// 主配置文件名
-        /// 此数组是插件所使用的所有的主配置文件名
+        /// 配置文件名
+        /// 此数组是插件所使用的所有的配置文件名
         /// </summary>
-        public static readonly string[] MAIN_CONFIG_NAME_ARRAY = 
+        public static readonly string[] CONFIG_NAME_ARRAY = 
         {
             MAIN_MANIFEST_FILE_NAME,
             RESOURCES_MANIFEST_FILE_NAME,
             RESOURCES_PACKAGE_FILE_NAME,
         };
+
+        /// <summary>
+        /// 配置存在检查（如果为true，必须存在）
+        /// </summary>
+        public static readonly bool[] CONFIG_REQUIRE_CONDITION_ARRAY =
+        {
+            true,
+            true,
+            false,
+        };
+
+        /// <summary>
+        ///   路径字符串转换成通用的路径字符串("/")
+        /// </summary>
+        public static string CovertCommonPath(string path)
+        {
+            return path.Replace('\\', '/');
+        }
 
         /// <summary>
         ///   获得资源全局路径
@@ -101,21 +131,11 @@ namespace zcode.AssetBundlePacker
         }
 
         /// <summary>
-        ///   拷贝文件
+        ///   获得缓存路径
         /// </summary>
-        public static IEnumerator StartCopyFile(string str, string dest)
+        public static string GetUpdaterCacheFileFullName(string file)
         {
-            yield return zcode.FileHelper.CopyStreamingAssetsToFile(str, dest);
-        }
-
-        /// <summary>
-        ///   拷贝文件
-        /// </summary>
-        public static IEnumerator StartCopyInitialFile(string local_name)
-        {
-            yield return zcode.FileHelper.CopyStreamingAssetsToFile(
-                                                GetInitialFileFullName(local_name),
-                                                GetFileFullName(local_name));
+            return UPDATER_CACHE_PATH + "/" + file;
         }
 
         /// <summary>

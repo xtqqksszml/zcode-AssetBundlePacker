@@ -22,9 +22,18 @@ namespace zcode.AssetBundlePacker
         /// </summary>
         public class Scene
         {
-            public string SceneLevelName;           // 场景名称
-            public string ScenePath;                // 场景路径
-            public string SceneConfigPath;          // 场景配置文件路径
+            /// <summary>
+            /// 场景名称
+            /// </summary>
+            public string SceneLevelName;
+            /// <summary>
+            /// 场景路径
+            /// </summary>
+            public string ScenePath;
+            /// <summary>
+            /// 场景配置文件路径
+            /// </summary>
+            public string SceneConfigPath;
         }
 
         /// <summary>
@@ -32,17 +41,53 @@ namespace zcode.AssetBundlePacker
         /// </summary>
         public class AssetBundle
         {
-            public string AssetBundleName;                      // AssetBundleName
-            public List<string> Assets = new List<string>();    // 资源列表
-            public List<string> Scenes = new List<string>();    // 场景列表
-            public long Size;                                   // AssetBundle大小
-            public long CompressSize;                           // 压缩包大小 
-            public bool IsCompress = false;                     // 是否压缩
-            public bool IsNative = false;                       // 是否打包到安装包中（原始资源）
-            public bool IsPermanent = false;                    // 是否常驻内存
+            /// <summary>
+            /// AssetBundleName
+            /// </summary>
+            public string AssetBundleName;
+            /// <summary>
+            /// 资源列表
+            /// </summary>
+            public List<string> Assets = new List<string>();
+            /// <summary>
+            /// 场景列表
+            /// </summary>
+            public List<string> Scenes = new List<string>();
+            /// <summary>
+            /// AssetBundle大小
+            /// </summary>
+            public long Size;
+            /// <summary>
+            /// 压缩包大小
+            /// </summary>
+            public long CompressSize;
+            /// <summary>
+            /// 是否压缩
+            /// </summary>
+            public bool IsCompress = false;
+            /// <summary>
+            /// 是否打包到安装包中（是否作为原始资源）
+            /// </summary>
+            public bool IsNative = false;
+            /// <summary>
+            /// 是否常驻内存
+            /// </summary>
+            public bool IsPermanent = false;
+            /// <summary>
+            /// 是否启动时加载（此AssetBundle也是常驻内存）
+            /// </summary>
+            public bool IsStartupLoad = false;
         }
 
-        public uint Version;
+        // 版本号(弃用)
+        [System.Obsolete("Use ResourcesManifestData.strVersion")]
+        public int Version;
+        // 版本号
+        public string strVersion;
+        // 是否打包所有AssetBundle至安装包
+        public bool IsAllNative;
+        // 是否所有AssetBundle都压缩
+        public bool IsAllCompress;
         //Key：AssetBundleName Value: Describe
         public Dictionary<string, AssetBundle> AssetBundles = new Dictionary<string, AssetBundle>();
         //Key：SceneLevelName Value: SceneDescribe
@@ -201,14 +246,17 @@ namespace zcode.AssetBundlePacker
         }
 
         /// <summary>
-        ///   判断一个AssetBundle是否常驻内存资源
+        ///   判断一个AssetBundle是否常驻内存资源（标记为常驻内存或者启动时加载）
         /// </summary>
         public bool IsPermanent(string assetbundlename)
         {
             if (Data.AssetBundles == null)
                 return false;
             if (Data.AssetBundles.ContainsKey(assetbundlename))
-                return Data.AssetBundles[assetbundlename].IsPermanent;
+            {
+                return Data.AssetBundles[assetbundlename].IsPermanent ||
+                    Data.AssetBundles[assetbundlename].IsStartupLoad;
+            }
 
             return false;
         }

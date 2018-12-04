@@ -41,15 +41,13 @@ namespace zcode
             if (ao != null)
             {
                 while (!ao.isDone)
-                    yield return 1;
+                    yield return null;
             }
 
             if (DoneCallback != null)
                 DoneCallback();
 
             Destroy(this.gameObject);
-
-            yield return 0;
         }
 
         /// <summary>
@@ -71,8 +69,6 @@ namespace zcode
                 DoneCallback();
 
             Destroy(this.gameObject);
-
-            yield return 0;
         }
 
         /// <summary>

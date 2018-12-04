@@ -108,7 +108,7 @@ namespace zcode.AssetBundlePacker
         {
             if (!AssetBundleManager.Instance.IsSceneExist(scene_name))
                 return;
-            var scene_desc = AssetBundleManager.Instance.ResourcesManifest.FindScene(scene_name);
+            var scene_desc = AssetBundleManager.Instance.ResManifest.FindScene(scene_name);
             if (scene_desc == null)
                 return;
             TextAsset text_asset = AssetBundleManager.Instance.LoadAsset<TextAsset>(scene_desc.SceneConfigPath);

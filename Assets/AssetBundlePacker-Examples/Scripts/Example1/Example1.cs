@@ -157,7 +157,7 @@ public class Example1 : MonoBehaviour
     void OnGUI_Example_Ready()
     {
         //启动成功
-        GUI.Label(new Rect(0f, 0f, Screen.width, 20f), "AssetBundlePacker launch succeed, Version is " + AssetBundleManager.Instance.Version);
+        GUI.Label(new Rect(0f, 0f, Screen.width, 20f), "AssetBundlePacker launch succeed, Version is " + AssetBundleManager.Instance.strVersion);
         //下载地址
         GUI.Label(new Rect(0f, 20f, 100f, 20f), "下载地址：");
         URL = GUI.TextField(new Rect(100f, 20f, Screen.width - 100f, 20f), URL);
@@ -176,8 +176,8 @@ public class Example1 : MonoBehaviour
             GUI.Label(new Rect(0, 40f, Screen.width, 20f), STATE_DESCRIBE_TABLE[(int)updater_.CurrentState]);
             //当前阶段进度
             GUI.HorizontalScrollbar(new Rect(0f, 60f, Screen.width, 30f)
-                           , 0f, updater_.CurrentStateCompleteValue
-                           , 0f, updater_.CurrentStateTotalValue);
+                           , 0f, updater_.CurrentProgress
+                           , 0f, 1f);
 
             if (!updater_.IsDone && !updater_.IsFailed)
             {

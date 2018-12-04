@@ -1,27 +1,25 @@
 ManifestFileVersion: 0
+CRC: 241437145
 AssetBundleManifest:
   AssetBundleInfos:
     Info_0:
-      Name: assets/scenes/simplescene.unityconfig.txt.ab
+      Name: assets/resources/version_1/text/text_ab
       Dependencies: {}
     Info_1:
-      Name: assets/scenes/simplescene.unity.ab
+      Name: assets/resources/version_1/texture/tex_1_ab
       Dependencies: {}
     Info_2:
-      Name: assets/resources/version_1/models/sphere.ab
+      Name: assets/scenes/simplescene.unityconfig_ab
       Dependencies: {}
     Info_3:
-      Name: assets/resources/version_1/simplescene.ab
+      Name: assets/scenes/simplescene_ab
       Dependencies: {}
     Info_4:
-      Name: assets/resources/version_1/text/text.txt.ab
+      Name: assets/resources/version_1/models/sphere_ab
       Dependencies: {}
     Info_5:
-      Name: assets/resources/version_1/texture/tex_1.png.ab
+      Name: assets/resources/package_level1/texture/tex_3_ab
       Dependencies: {}
     Info_6:
-      Name: assets/resources/package_level1/texture/tex_3.png.ab
-      Dependencies: {}
-    Info_7:
-      Name: assets/resources/version_2/texture/tex_2.png.ab
+      Name: assets/resources/version_2/texture/tex_2_ab
       Dependencies: {}

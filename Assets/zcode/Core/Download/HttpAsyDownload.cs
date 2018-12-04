@@ -184,7 +184,7 @@ namespace zcode
             }
             catch (System.Exception ex)
             {
-                Debug.LogError(ex.Message);
+                Debug.LogErrorFormat("OpenFile is FAILED! \nEx:{0}\n StackTrace:{1}", ex.Message, ex.StackTrace);
             }
 
             if (FS != null)
@@ -271,16 +271,23 @@ namespace zcode
         /// </summary>
         bool ReadLastModified(ref DateTime last_modified)
         {
-            if (FS != null && FS.Length > FILE_LAST_MODIFIED_SIZE)
+            try
             {
-                byte[] bytes = new byte[FILE_LAST_MODIFIED_SIZE];
-                FS.Seek(LastTimeCompletedLength - FILE_LAST_MODIFIED_SIZE, SeekOrigin.Begin);
-                FS.Read(bytes, 0, FILE_LAST_MODIFIED_SIZE);
-                long ticks = long.Parse(System.Text.Encoding.Default.GetString(bytes));
-                last_modified = new DateTime(ticks);
-                return true;
+                if (FS != null && FS.Length > FILE_LAST_MODIFIED_SIZE)
+                {
+                    byte[] bytes = new byte[FILE_LAST_MODIFIED_SIZE];
+                    FS.Seek(LastTimeCompletedLength - FILE_LAST_MODIFIED_SIZE, SeekOrigin.Begin);
+                    FS.Read(bytes, 0, FILE_LAST_MODIFIED_SIZE);
+                    long ticks = long.Parse(System.Text.Encoding.Default.GetString(bytes));
+                    last_modified = new DateTime(ticks);
+                    return true;
+                }
             }
-
+            catch (System.Exception ex)
+            {
+                Debug.LogWarningFormat("ReadLastModified() -  FALIED! {0}\nEx:{1}\nStackTrace:{2}", FileFullName, ex.Message, ex.StackTrace);
+            }
+            
             return false;
         }
     }
@@ -301,6 +308,7 @@ namespace zcode
             DownloadError,  // 下载出错
             TimeOut,        // 超时
             Abort,          // 强制关闭
+            DiskFull,       // 存储空间不足
         }
 
         /// <summary>
@@ -336,6 +344,14 @@ namespace zcode
         ///   是否结束
         /// </summary>
         public bool IsDone { get; private set; }
+
+        /// <summary>
+        ///   是否出错
+        /// </summary>
+        public bool IsFailed
+        {
+            get { return ErrorCode != emErrorCode.None; }
+        }
 
         /// <summary>
         ///   错误代码
@@ -375,7 +391,7 @@ namespace zcode
         /// <summary>
         ///   锁对象，用于保证线程安全
         /// </summary>
-        object lock_obj_ = new object();
+        readonly object lock_obj_ = new object();
 
         /// <summary>
         ///   
@@ -436,7 +452,7 @@ namespace zcode
             {
                 if (content_ != null && content_.State == DownloadContent.emState.Downloading)
                 {
-                    OnFailed(emErrorCode.Abort);
+                    Error(emErrorCode.Abort);
                 }
             }
         }
@@ -446,51 +462,45 @@ namespace zcode
         /// </summary>
         void OnFinish()
         {
-            lock (lock_obj_)
+            if (content_ != null)
             {
-                if (content_ != null)
-                {
-                    content_.State = DownloadContent.emState.Completed;
-                    content_.Close();
-                    content_ = null;
-                }
-                    
-                if (http_request_ != null)
-                {
-                    http_request_.Abort();
-                    http_request_ = null;
-                }
-
-                IsDone = true;
+                content_.State = DownloadContent.emState.Completed;
+                content_.Close();
+                content_ = null;
             }
+
+            if (http_request_ != null)
+            {
+                http_request_.Abort();
+                http_request_ = null;
+            }
+
+            IsDone = true;
         }
 
         /// <summary>
         ///   下载失败
         /// </summary>
-        void OnFailed(emErrorCode code)
+        void Error(emErrorCode code)
         {
-            lock (lock_obj_)
+            if (content_ != null)
             {
-                if (content_ != null)
-                {
-                    content_.State = DownloadContent.emState.Failed;
-                    content_.Close();
-                    content_ = null;
-                }
-
-                if (http_request_ != null)
-                {
-                    http_request_.Abort();
-                    http_request_ = null;
-                }
-
-                IsDone = true;
-                ErrorCode = code;
-
-                if (error_callback_ != null)
-                    error_callback_(this);
+                content_.State = DownloadContent.emState.Failed;
+                content_.Close();
+                content_ = null;
             }
+
+            if (http_request_ != null)
+            {
+                http_request_.Abort();
+                http_request_ = null;
+            }
+
+            IsDone = true;
+            ErrorCode = code;
+
+            if (error_callback_ != null)
+                error_callback_(this);
         }
 
         /// <summary>
@@ -504,7 +514,6 @@ namespace zcode
                 {
                     //尝试下载资源，携带If-Modified-Since
                     http_request_ = WebRequest.Create(URL + LocalName) as HttpWebRequest;
-                    http_request_.Timeout = TIMEOUT_TIME;
                     http_request_.KeepAlive = false;
                     http_request_.IfModifiedSince = content_.LastModified;
                     IAsyncResult result = (IAsyncResult)http_request_.BeginGetResponse(new AsyncCallback(_OnResponseCallback), http_request_);
@@ -514,9 +523,10 @@ namespace zcode
             catch (System.Exception e)
             {
                 Debug.LogWarning("HttpAsyDownload - \"" + LocalName + "\" download failed!"
-                                    + "\nMessage:" + e.Message);
+                                    + "\nMessage:" + e.Message
+                                    + "\nStrace:" + e.StackTrace);
                 UnregisterTimeOut();
-                OnFailed(emErrorCode.NoResponse);
+                Error(emErrorCode.NoResponse);
             }
         }
 
@@ -527,14 +537,20 @@ namespace zcode
         {
             try
             {
-                UnregisterTimeOut();
-
                 lock (lock_obj_)
                 {
+                    UnregisterTimeOut();
+
                     HttpWebRequest req = ar.AsyncState as HttpWebRequest;
                     if (req == null) return;
                     HttpWebResponse response = req.BetterEndGetResponse(ar) as HttpWebResponse;
                     if (response.StatusCode == HttpStatusCode.OK)
+                    {
+                        Length = response.ContentLength;
+                        content_.WebResponse = response;
+                        _BeginRead(new AsyncCallback(_OnReadCallback));
+                    }
+                    else if (response.StatusCode == HttpStatusCode.PartialContent)
                     {
                         Length = response.ContentLength;
                         content_.WebResponse = response;
@@ -554,7 +570,7 @@ namespace zcode
                     else
                     {
                         response.Close();
-                        OnFailed(emErrorCode.NoResponse);
+                        Error(emErrorCode.NoResponse);
                         return;
                     }
                 }
@@ -562,8 +578,9 @@ namespace zcode
             catch (System.Exception e)
             {
                 Debug.LogWarning("HttpAsyDownload - \"" + LocalName + "\" download failed!"
-                                    + "\nMessage:" + e.Message);
-                OnFailed(emErrorCode.DownloadError);
+                                    + "\nMessage:" + e.Message
+                                    + "\nStrace:" + e.StackTrace);
+                Error(emErrorCode.DownloadError);
             }
         }
 
@@ -587,9 +604,10 @@ namespace zcode
             catch (System.Exception e)
             {
                 Debug.LogWarning("HttpAsyDownload - \"" + LocalName + "\" download failed!"
-                                    + "\nMessage:" + e.Message);
+                                    + "\nMessage:" + e.Message
+                                    + "\nStrace:" + e.StackTrace);
                 UnregisterTimeOut();
-                OnFailed(emErrorCode.NoResponse);
+                Error(emErrorCode.NoResponse);
             }
         }
 
@@ -615,13 +633,13 @@ namespace zcode
                     }
                     else if (response.StatusCode == HttpStatusCode.NotModified)
                     {
-                        OnFailed(emErrorCode.Abort);
+                        Error(emErrorCode.Abort);
                         return;
                     }
                     else
                     {
                         response.Close();
-                        OnFailed(emErrorCode.NoResponse);
+                        Error(emErrorCode.NoResponse);
                         return;
                     }
                 }
@@ -629,8 +647,9 @@ namespace zcode
             catch (System.Exception e)
             {
                 Debug.LogWarning("HttpAsyDownload - \"" + LocalName + "\" download failed!"
-                                    + "\nMessage:" + e.Message);
-                OnFailed(emErrorCode.DownloadError);
+                                    + "\nMessage:" + e.Message
+                                    + "\nStrace:" + e.StackTrace);
+                Error(emErrorCode.DownloadError);
             }
         }
 
@@ -640,11 +659,18 @@ namespace zcode
         public IAsyncResult _BeginRead(AsyncCallback callback)
         {
             if (content_ == null)
+            {
                 return null;
+            }
+
+            if (IsFailed)
+            {
+                return null;
+            }
 
             if (content_.State == DownloadContent.emState.Canceling)
             {
-                OnFailed(emErrorCode.Cancel);
+                Error(emErrorCode.Cancel);
                 return null;
             }
 
@@ -674,33 +700,37 @@ namespace zcode
                         rs.FS.Write(rs.Buffer, 0, read);
                         rs.FS.Flush();
                         CompletedLength += read;
-
-                        if (notify_callback_ != null)
-                            notify_callback_(this, (long)read);
+                        _BeginRead(new AsyncCallback(_OnReadCallback));
                     }
                     else
                     {
                         OnFinish();
-
-                        if (notify_callback_ != null)
-                            notify_callback_(this, (long)read);
-                        return;
                     }
 
-                    _BeginRead(new AsyncCallback(_OnReadCallback));
+                    if (notify_callback_ != null)
+                        notify_callback_(this, (long)read);
                 }
+            }
+            catch(IOException e)
+            {
+                Debug.LogWarning("HttpAsyDownload - \"" + LocalName + "\" download failed!"
+                                    + "\nMessage:" + e.Message
+                                    + "\nStrace:" + e.StackTrace);
+                Error(emErrorCode.DiskFull);
             }
             catch (WebException e)
             {
                 Debug.LogWarning("HttpAsyDownload - \"" + LocalName + "\" download failed!"
-                                    + "\nMessage:" + e.Message);
-                OnFailed(emErrorCode.DownloadError);
+                                    + "\nMessage:" + e.Message
+                                    + "\nStrace:" + e.StackTrace);
+                Error(emErrorCode.DownloadError);
             }
             catch (System.Exception e)
             {
                 Debug.LogWarning("HttpAsyDownload - \"" + LocalName + "\" download failed!"
-                                    + "\nMessage:" + e.Message);
-                OnFailed(emErrorCode.DownloadError);
+                                    + "\nMessage:" + e.Message
+                                    + "\nStrace:" + e.StackTrace);
+                Error(emErrorCode.DownloadError);
             }
         }
 
@@ -746,7 +776,7 @@ namespace zcode
             {
                 if (timedOut)
                 {
-                    OnFailed(emErrorCode.TimeOut);
+                    Error(emErrorCode.TimeOut);
                 }
 
                 UnregisterTimeOut();

@@ -118,7 +118,15 @@ namespace zcode.AssetBundlePacker
             url_group_ = url_group;
             packages_name_ = pack_list;
 
-            StartCoroutine(Downloading());
+            if (AssetBundleManager.IsPlatformSupport)
+            {
+                StopAllCoroutines();
+                StartCoroutine(Downloading());
+            }
+            else
+            {
+                IsDone = true;
+            }
 
             return true;
         }
@@ -246,7 +254,7 @@ namespace zcode.AssetBundlePacker
                 yield break;
 
             //载入资源信息描述文件
-            ResourcesManifest resources_manifest = AssetBundleManager.Instance.ResourcesManifest;
+            ResourcesManifest resources_manifest = AssetBundleManager.Instance.ResManifest;
 
             //开始下载
             ab_download_ = new AssetBundleDownloader(current_url_);
@@ -258,7 +266,7 @@ namespace zcode.AssetBundlePacker
             }
             if (ab_download_.IsFailed)
             {
-                Error(emErrorCode.DownloadAssetBundleFailed);
+                Error(ab_download_.ErrorCode);
                 yield break;
             }
             ab_download_ = null;

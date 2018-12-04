@@ -36,17 +36,17 @@ namespace zcode
         public bool IsDone { get; private set; }
 
         /// <summary>
-        ///   错误代码
-        /// </summary>
-        public HttpAsyDownload.emErrorCode ErrorCode { get; private set; }
-
-        /// <summary>
         ///   是否出错
         /// </summary>
         public bool IsFailed
         {
             get { return ErrorCode != HttpAsyDownload.emErrorCode.None; }
         }
+
+        /// <summary>
+        ///   错误代码
+        /// </summary>
+        public HttpAsyDownload.emErrorCode ErrorCode { get; private set; }
 
         /// <summary>
         ///   下载的大小

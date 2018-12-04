@@ -20,7 +20,8 @@ namespace zcode.AssetBundlePacker
         /// <summary>
         ///   打包AssetBundle
         /// </summary>
-        public static void BuildAllAssetBundlesToTarget(BuildTarget target
+        public static void BuildAllAssetBundlesToTarget(AssetBundleBuild build
+            , BuildTarget target
             , BuildAssetBundleOptions options)
         {
             string manifest_file = EditorCommon.BUILD_PATH + "/" + Common.MAIN_MANIFEST_FILE_NAME;
@@ -28,18 +29,22 @@ namespace zcode.AssetBundlePacker
 
             if (!Directory.Exists(EditorCommon.BUILD_PATH))
                 Directory.CreateDirectory(EditorCommon.BUILD_PATH);
-            BuildPipeline.BuildAssetBundles(EditorCommon.BUILD_PATH, options, target);
-            AssetDatabase.Refresh();
 
+            BuildPipeline.BuildAssetBundles(EditorCommon.BUILD_PATH, options, target);
+
+            //AssetBundle
             AssetBundleManifest new_manifest = Common.LoadMainManifestByPath(manifest_file);
             ComparisonAssetBundleManifest(old_manifest, new_manifest);
-            ExportResourcesManifestFile(new_manifest);
 
-            string resoures_manifest_file = EditorCommon.BUILD_PATH + "/" + Common.RESOURCES_MANIFEST_FILE_NAME;
-            ResourcesManifest resoureces_manifest = Common.LoadResourcesManifestByPath(resoures_manifest_file);
-            CompressAssetBundles(resoureces_manifest, ref resoureces_manifest);
-            resoureces_manifest.Save(resoures_manifest_file);
-            CopyNativeAssetBundleToStreamingAssets(resoureces_manifest);
+            // ResourcesManifest
+            string res_manifest_file = EditorCommon.BUILD_PATH + "/" + Common.RESOURCES_MANIFEST_FILE_NAME;
+            ResourcesManifest res_manifest = Common.LoadResourcesManifestByPath(res_manifest_file);
+            ResourcesManifest rew_res_manifest = ExportResourcesManifestFile(build, new_manifest);
+
+            CompressAssetBundles(res_manifest, rew_res_manifest);
+
+            CopyNativeAssetBundleToStreamingAssets(rew_res_manifest);
+
             EditorUtility.ClearProgressBar();
             AssetDatabase.Refresh();
         }
@@ -47,7 +52,7 @@ namespace zcode.AssetBundlePacker
         /// <summary>
         /// 压缩AssetBundle
         /// </summary>
-        public static bool CompressAssetBundles(ResourcesManifest old_resources_manifest, ref ResourcesManifest resources_manifest)
+        public static bool CompressAssetBundles(ResourcesManifest old_resources_manifest, ResourcesManifest resources_manifest)
         {
             if (resources_manifest == null)
                 return false;
@@ -184,12 +189,12 @@ namespace zcode.AssetBundlePacker
                     , FileAttributes.Hidden | FileAttributes.System);
 
             //拷贝所有配置文件
-            for (int i = 0; i < Common.MAIN_CONFIG_NAME_ARRAY.Length; ++i)
+            for (int i = 0; i < Common.CONFIG_NAME_ARRAY.Length; ++i)
             {
-                string file = Common.MAIN_CONFIG_NAME_ARRAY[i];
+                string file = Common.CONFIG_NAME_ARRAY[i];
                 string src_file_name = EditorCommon.BUILD_PATH + "/" + file;
                 string dest_file_name = Common.INITIAL_PATH + "/" + file;
-                float progress = (float)(i + 1) / (float)Common.MAIN_CONFIG_NAME_ARRAY.Length;
+                float progress = (float)(i + 1) / (float)Common.CONFIG_NAME_ARRAY.Length;
                 if (ShowProgressBar("", "Copy " + file, progress))
                 {
                     EditorUtility.ClearProgressBar();
@@ -235,7 +240,7 @@ namespace zcode.AssetBundlePacker
         /// <summary>
         /// 根据AssetBundle导出ResourcesManifest文件
         /// </summary>
-        public static void ExportResourcesManifestFile(AssetBundleManifest manifest)
+        public static ResourcesManifest ExportResourcesManifestFile(AssetBundleBuild build, AssetBundleManifest manifest)
         {
             ResourcesManifest info = new ResourcesManifest();
 
@@ -297,11 +302,24 @@ namespace zcode.AssetBundlePacker
                 }
             }
 
+            //同步数据至ResourcesManifestData
+            if(build != null)
+            {
+                build.SyncConfigTo(info.Data);
+            }
+
             //保存ResourcesInfo
             string resources_manifest_file = EditorCommon.BUILD_PATH + "/" + Common.RESOURCES_MANIFEST_FILE_NAME;
             info.Save(resources_manifest_file);
 
+            if (AssetBundleBrowseWindow.Instance != null)
+            {
+                AssetBundleBrowseWindow.Instance.LoadData(info);
+            }
+
             AssetDatabase.Refresh();
+
+            return info;
         }
 
         /// <summary>

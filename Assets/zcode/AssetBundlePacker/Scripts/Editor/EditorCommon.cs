@@ -5,8 +5,7 @@
  * Note  : AssetBundle编辑器环境下相关定义
 ***************************************************************/
 using UnityEngine;
-using System.Collections;
-using System.Runtime.Serialization;
+using System.IO;
 
 namespace zcode.AssetBundlePacker
 {
@@ -15,10 +14,23 @@ namespace zcode.AssetBundlePacker
     /// </summary>
     public enum emAssetBundleNameRule
     {
-        None,               // 无
-        SingleFile,         // 单个文件
-        Folder,             // 文件夹
-        Ignore,             // 忽略文件或者文件夹
+        /// <summary>
+        /// 无
+        /// </summary>
+        None = 0,
+        /// <summary>
+        /// 资源单独打包
+        /// AssetBundleName为文件资源路径
+        /// </summary>
+        SingleFile = 1,
+        /// <summary>
+        /// 文件夹打包
+        /// </summary>
+        Folder = 2,
+        /// <summary>
+        /// 忽略文件或者文件夹
+        /// </summary>
+        Ignore = 3,
     }
 
     /// <summary>
@@ -27,9 +39,9 @@ namespace zcode.AssetBundlePacker
     public static class EditorCommon
     {
         /// <summary>
-        ///   编辑器环境下默认打包路径
+        ///   编辑器环境下默认AssetBundle存放路径
         /// </summary>
-        public static readonly string BUILD_PATH = System.IO.Directory.GetCurrentDirectory() + "\\" + Common.ROOT_FOLDER_NAME;
+        public static readonly string BUILD_PATH = ProjectDirectory + Common.ROOT_FOLDER_NAME;
 
         /// <summary>
         ///   编辑器环镜下资源起始路径
@@ -40,6 +52,11 @@ namespace zcode.AssetBundlePacker
         ///   编辑器环镜下场景起始路径
         /// </summary>
         public static readonly string SCENE_START_PATH = Application.dataPath + "/Scenes";
+
+        /// <summary>
+        /// 编辑器环镜下AssetBundleBuild.rule保存路径
+        /// </summary>
+        public static readonly string ASSETBUNDLE_BUILD_RULE_FILE_PATH = Application.dataPath + "/AssetBundleBuild.rule";
 
         /// <summary>
         ///   编辑器环镜下主Manifest保存路径
@@ -83,8 +100,8 @@ namespace zcode.AssetBundlePacker
         {
             get
             {
-                string directory = System.IO.Directory.GetCurrentDirectory() + "\\";
-                directory = directory.Replace('\\', '/');
+                string directory = System.IO.Directory.GetCurrentDirectory() + "/";
+                directory = Common.CovertCommonPath(directory);
                 return directory;
             }
         }
@@ -146,7 +163,7 @@ namespace zcode.AssetBundlePacker
         /// </summary>
         public static string AbsoluteToRelativePath(string path)
         {
-            path = path.Replace('\\', '/');
+            path = Common.CovertCommonPath(path);
             int last_idx = path.LastIndexOf(ProjectDirectory);
             if (last_idx < 0)
                 return path;
@@ -168,5 +185,6 @@ namespace zcode.AssetBundlePacker
             fullPath = position > -1 ? fullPath.Substring(0, position) : fullPath;
             return fullPath + Common.EXTENSION;
         }
+
     }
 }

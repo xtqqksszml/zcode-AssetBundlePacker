@@ -27,12 +27,14 @@ namespace zcode.AssetBundlePacker
                 Compress,
                 Native,
                 Permanent,
+                StartupLoad,
             }
 
             public Operate Op;
             public bool IsCompress;
             public bool IsNative;
             public bool IsPermanent;
+            public bool IsStartupLoad;
         }
 
         /// <summary>
@@ -48,15 +50,15 @@ namespace zcode.AssetBundlePacker
             /// <summary>
             /// 
             /// </summary>
-            public override GUILayoutMultiSelectGroup.OperateResult Draw()
+            public override GUILayoutMultiSelectGroup.OperateResult Draw(float width)
             {
                 GUILayoutMultiSelectGroup.OperateResult result = null;
                 for (int i = 0; i < Nodes.Count; ++i)
                 {
                     if (result == null)
-                        result = Nodes[i].Draw();
+                        result = Nodes[i].Draw(width);
                     else
-                        Nodes[i].Draw();
+                        Nodes[i].Draw(width);
                 }
 
                 return result;
@@ -96,10 +98,12 @@ namespace zcode.AssetBundlePacker
             /// <summary>
             /// 渲染
             /// </summary>
-            public override GUILayoutMultiSelectGroup.OperateResult Draw()
+            public override GUILayoutMultiSelectGroup.OperateResult Draw(float width)
             {
                 if (AssetBundle == null)
                     return null;
+
+                var config = AssetBundleBrowseWindow.Instance.Manifest.Data;
 
                 GUI.backgroundColor = IsSelect ? Color.white : new Color(0.8f, 0.8f, 0.8f);
                 GUILayout.BeginHorizontal("AS TextArea", GUILayout.MinHeight(20f));
@@ -109,11 +113,13 @@ namespace zcode.AssetBundlePacker
                 float size = (float)AssetBundle.Size / 1024f;
                 bool toggle_1 = GUILayout.Button(size.ToString("F2") + "KB", "OL TextField", GUILayout.Width(108f));
                 GUILayout.Space(32f);
-                bool is_compress = GUILayout.Toggle(AssetBundle.IsCompress, "", GUILayout.Width(24f));
+                bool is_compress = GUILayoutHelper.Toggle(config.IsAllCompress || AssetBundle.IsCompress, "", config.IsAllCompress, GUILayout.Width(24f));
                 GUILayout.Space(40f);
-                bool is_native = GUILayout.Toggle(AssetBundle.IsNative, "", GUILayout.Width(24f));
+                bool is_native = GUILayoutHelper.Toggle(config.IsAllNative || AssetBundle.IsNative, "", config.IsAllNative, GUILayout.Width(24f));
                 GUILayout.Space(40f);
-                bool is_permanent = GUILayout.Toggle(AssetBundle.IsPermanent, "", GUILayout.Width(24f));
+                bool is_permanent = GUILayoutHelper.Toggle(AssetBundle.IsPermanent, "", false, GUILayout.Width(24f));
+                GUILayout.Space(40f);
+                bool is_startup_load = GUILayoutHelper.Toggle(AssetBundle.IsStartupLoad, "", false, GUILayout.Width(24f));
                 GUILayout.EndHorizontal();
                 GUI.color = Color.white;
                 GUI.backgroundColor = Color.white;
@@ -125,6 +131,8 @@ namespace zcode.AssetBundlePacker
                     op = SelectResultStatus.Operate.Native;
                 if (is_permanent != AssetBundle.IsPermanent)
                     op = SelectResultStatus.Operate.Permanent;
+                if (is_startup_load != AssetBundle.IsStartupLoad)
+                    op = SelectResultStatus.Operate.StartupLoad;
 
                 if (toggle || toggle_1 || op != SelectResultStatus.Operate.None)
                 {
@@ -138,6 +146,7 @@ namespace zcode.AssetBundlePacker
                             IsCompress = is_compress,
                             IsNative = is_native,
                             IsPermanent = is_permanent,
+                            IsStartupLoad = is_startup_load,
                         },
                     };
                 }
@@ -159,10 +168,19 @@ namespace zcode.AssetBundlePacker
         /// <summary>
         ///   载入数据
         /// </summary>
-        private bool LoadData()
+        public bool LoadData(ResourcesManifest manifest = null)
         {
-            Manifest = new ResourcesManifest();
-            bool result = Manifest.Load(EditorCommon.RESOURCES_MANIFEST_FILE_PATH);
+            bool result = false;
+            if(manifest == null)
+            {
+                Manifest = new ResourcesManifest();
+                result = Manifest.Load(EditorCommon.RESOURCES_MANIFEST_FILE_PATH);
+            }
+            else
+            {
+                Manifest = manifest;
+                result = true;
+            }
 
             Build();
 
@@ -212,12 +230,31 @@ namespace zcode.AssetBundlePacker
         {
             ResourcesManifest old_resources_manifest = new ResourcesManifest();
             old_resources_manifest.Load(EditorCommon.RESOURCES_MANIFEST_FILE_PATH);
-
+            
+            //压缩AB包
             bool compress = BuildAssetBundle.CompressAssetBundles(old_resources_manifest
-                                                                    , ref Manifest);
+                                                                    , Manifest);
+            //保存数据
             bool save = compress ? SaveData() : false;
+            //拷贝资源
             bool copy = save ? BuildAssetBundle.CopyNativeAssetBundleToStreamingAssets(Manifest) : false;
             bool succeed = compress && copy && save;
+
+            if(succeed)
+            {
+                //同步数据
+                if (AssetBundleBuildWindow.Instance != null)
+                {
+                    AssetBundleBuildWindow.Instance.SyncConfigForm(Manifest.Data);
+                }
+                else
+                {
+                    AssetBundleBuild buildData = new AssetBundleBuild();
+                    buildData.Load(EditorCommon.ASSETBUNDLE_BUILD_RULE_FILE_PATH);
+                    buildData.SyncConfigFrom(Manifest.Data);
+                    buildData.Save(EditorCommon.ASSETBUNDLE_BUILD_RULE_FILE_PATH);
+                }
+            }
 
             string title = "执行配置AssetBundle" + (succeed ? "成功" : "失败");
             string compress_desc = "压缩资源 - " + (compress ? "成功" : "失败");
@@ -251,6 +288,8 @@ namespace zcode.AssetBundlePacker
                             node.AssetBundle.IsNative = status.IsNative;
                         else if (status.Op == SelectResultStatus.Operate.Permanent)
                             node.AssetBundle.IsPermanent = status.IsPermanent;
+                        else if (status.Op == SelectResultStatus.Operate.Permanent)
+                            node.AssetBundle.IsStartupLoad = status.IsStartupLoad;
                     }
                 }
             }
@@ -264,9 +303,20 @@ namespace zcode.AssetBundlePacker
         {
             GUILayout.Space(3f);
             GUILayout.BeginHorizontal();
-            GUILayout.Label("资源版本号：", GUILayout.Width(96f));
-            Manifest.Data.Version = (uint)EditorGUILayout.IntField((int)Manifest.Data.Version);
+            GUILayout.Label("资源版本号", GUILayout.MaxWidth(200f));
+            Manifest.Data.strVersion = EditorGUILayout.TextField(Manifest.Data.strVersion);
             GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField("打包全部AssetBundle至安装包", GUILayout.MaxWidth(200f));
+            Manifest.Data.IsAllNative = EditorGUILayout.Toggle(Manifest.Data.IsAllNative);
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField("压缩全部AssetBundle", GUILayout.MaxWidth(200f));
+            Manifest.Data.IsAllCompress = EditorGUILayout.Toggle(Manifest.Data.IsAllCompress);
+            GUILayout.EndHorizontal();
+
             GUILayout.Space(3f);
             GUILayout.BeginHorizontal();
             GUILayout.Label("编号", "OL Title", GUILayout.Width(32f));
@@ -275,11 +325,12 @@ namespace zcode.AssetBundlePacker
             GUILayout.Label("压缩", "OL Title", GUILayout.Width(72f));
             GUILayout.Label("打包到安装包", "OL Title", GUILayout.Width(84f));
             GUILayout.Label("常驻内存", "OL Title", GUILayout.Width(60f));
+            GUILayout.Label("启动时加载", "OL Title", GUILayout.Width(60f));
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
             GUILayout.BeginVertical();
-            GUILayoutMultiSelectGroup.OperateResult result = gui_multi_select_.Draw();
+            GUILayoutMultiSelectGroup.OperateResult result = gui_multi_select_.Draw(position.size.x);
             GUILayout.EndVertical();
             GUILayout.EndHorizontal();
 
@@ -295,11 +346,12 @@ namespace zcode.AssetBundlePacker
         }
 
         /// <summary>
-        ///   
+        /// 
         /// </summary>
-        void Update()
+        void Awake()
         {
-        } 
+            LoadData();
+        }
 
         /// <summary>
         ///   
@@ -307,7 +359,15 @@ namespace zcode.AssetBundlePacker
         void OnEnable()
         {
             LoadData();
+            Instance = this;
         }
+
+        /// <summary>
+        ///   
+        /// </summary>
+        void Update()
+        {
+        } 
 
         /// <summary>
         ///   
@@ -322,7 +382,16 @@ namespace zcode.AssetBundlePacker
         [MenuItem("AssetBundle/Windows/AssetBundle Browse Window")]
         public static void Open()
         {
-            EditorWindow.GetWindow<AssetBundleBrowseWindow>(false, "AssetBundle Browse", true).Show();
+            var win = EditorWindow.GetWindow<AssetBundleBrowseWindow>(false, "AssetBundle Browse", true);
+            if(win != null)
+            {
+                win.Show();
+            }
         }
+
+        /// <summary>
+        /// 界面单例
+        /// </summary>
+        public static AssetBundleBrowseWindow Instance = null;
     }
 }

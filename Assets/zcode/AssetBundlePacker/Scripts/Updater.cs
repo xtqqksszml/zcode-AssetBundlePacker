@@ -8,6 +8,7 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 
 namespace zcode.AssetBundlePacker
 {
@@ -32,6 +33,28 @@ namespace zcode.AssetBundlePacker
 
             Max
         }
+
+
+        /// <summary>
+        /// 各个状态所占进度比率
+        /// </summary>
+        /// <remarks>
+        /// {当前状态所占比率， 上个状态累计总比率}
+        /// </remarks>
+        static readonly float[,] STATE_PROGRESS_RATIO = new float[,]
+        {
+            { 0f, 0f},              // None
+            { 0.025f, 0f},           // Initialize
+            { 0.025f, 0.25f},        // VerifyURL
+            { 0.025f, 0.05f},         // DownloadMainConfig
+            { 0.85f, 0.1f},         // UpdateAssetBundle
+            { 0.025f, 0.95f},         // CopyCacheFile
+            { 0.025f, 0.975f},        // Dispose
+            { 0f, 1f},              // Completed
+            { 0f, 1f},              // Failed
+            { 0f, 1f},              // Cancel
+            { 0f, 1f},              // Abort
+        };
 
         /// <summary>
         ///   UpdateEvent
@@ -67,14 +90,9 @@ namespace zcode.AssetBundlePacker
         public emState CurrentState { get; private set; }
 
         /// <summary>
-        ///   当前状态的完成度
+        ///   当前的完成的进度[0f, 1f]
         /// </summary>
-        public float CurrentStateCompleteValue { get; private set; }
-
-        /// <summary>
-        ///   当前状态的总需完成度
-        /// </summary>
-        public float CurrentStateTotalValue { get; private set; }
+        public float CurrentProgress { get; private set; }
 
         /// <summary>
         /// 下载地址列表
@@ -110,6 +128,21 @@ namespace zcode.AssetBundlePacker
         /// <summary>
         ///   开始更新
         /// </summary>
+        public bool StartUpdate(string url)
+        {
+            if (!AssetBundleManager.Instance.IsReady)
+                return false;
+            if (!IsDone && CurrentState != emState.None)
+                return false;
+
+            List<string> url_group = new List<string>();
+            url_group.Add(url);
+            return StartUpdate(url_group);
+        }
+
+        /// <summary>
+        ///   开始更新
+        /// </summary>
         public bool StartUpdate(List<string> url_group)
         {
             if (!AssetBundleManager.Instance.IsReady)
@@ -119,9 +152,32 @@ namespace zcode.AssetBundlePacker
 
             url_group_ = url_group;
             current_url_ = null;
-            StartCoroutine(Updating());
+
+            if(AssetBundleManager.IsPlatformSupport)
+            {
+                StopAllCoroutines();
+                StartCoroutine(Updating());
+            }
+            else
+            {
+                IsDone = true;
+            }
 
             return true;
+        }
+
+        /// <summary>
+        /// 重新开始更新
+        /// </summary>
+        public bool RestartUpdate()
+        {
+            if(!IsDone)
+            {
+                return false;
+            }
+
+            Reset();
+            return StartUpdate(url_group_);
         }
 
         /// <summary>
@@ -130,6 +186,8 @@ namespace zcode.AssetBundlePacker
         public void CancelUpdate()
         {
             StopAllCoroutines();
+
+            SaveDownloadCacheData();
 
             if (verifier_ != null)
             {
@@ -147,7 +205,6 @@ namespace zcode.AssetBundlePacker
                 ab_download_ = null;
 
             }
-            SaveDownloadCacheData();
             UpdateState(emState.Cancel);
             Done();
         }
@@ -158,6 +215,8 @@ namespace zcode.AssetBundlePacker
         public void AbortUpdate()
         {
             StopAllCoroutines();
+
+            SaveDownloadCacheData();
 
             if (verifier_ != null)
             {
@@ -175,7 +234,6 @@ namespace zcode.AssetBundlePacker
                 ab_download_ = null;
 
             }
-            SaveDownloadCacheData();
             UpdateState(emState.Abort);
             Done();
         }
@@ -186,27 +244,26 @@ namespace zcode.AssetBundlePacker
         IEnumerator Updating()
         {
             UpdateState(emState.Initialize);
-            yield return StartInitialize();
+            yield return UpdatingInitialize();
             UpdateState(emState.VerifyURL);
-            yield return StartVerifyURL();
+            yield return UpdatingVerifyURL();
             UpdateState(emState.DownloadMainConfig);
-            yield return StartDownloadMainConfig();
+            yield return UpdatingDownloadAllConfig();
             UpdateState(emState.UpdateAssetBundle);
-            yield return StartUpdateAssetBundle();
+            yield return UpdatingUpdateAssetBundle();
             UpdateState(emState.CopyCacheFile);
-            yield return StartCopyCacheFile();
+            yield return UpdatingCopyCacheFile();
             UpdateState(emState.Dispose);
-            yield return StartDispose();
+            yield return UpdatingDispose();
             UpdateState(ErrorCode == emErrorCode.None ? emState.Completed : emState.Failed);
 
             Done();
         }
 
-        #region Initialize
         /// <summary>
         ///   初始化更新器
         /// </summary>
-        IEnumerator StartInitialize()
+        IEnumerator UpdatingInitialize()
         {
             if (ErrorCode != emErrorCode.None)
                 yield break;
@@ -214,19 +271,17 @@ namespace zcode.AssetBundlePacker
             UpdateCompleteValue(0f, 1f);
 
             //创建缓存目录
-            if (!Directory.Exists(Common.CACHE_PATH))
-                Directory.CreateDirectory(Common.CACHE_PATH);
+            if (!Directory.Exists(Common.UPDATER_CACHE_PATH))
+                Directory.CreateDirectory(Common.UPDATER_CACHE_PATH);
 
             UpdateCompleteValue(1f, 1f);
             yield return null;
         }
-        #endregion
 
-        #region VerifyURL
         /// <summary>
         ///   开始进行资源URL检测
         /// </summary>
-        IEnumerator StartVerifyURL()
+        IEnumerator UpdatingVerifyURL()
         {
             if (ErrorCode != emErrorCode.None)
                 yield break;
@@ -247,30 +302,27 @@ namespace zcode.AssetBundlePacker
             current_url_ = verifier_.URL;
             if (string.IsNullOrEmpty(current_url_))
             {
-                Debug.LogWarning("Can't find valid Resources URL");
-                Error(emErrorCode.InvalidURL);
+                Error(emErrorCode.InvalidURL, "Can't find valid Resources URL");
             }
             verifier_ = null;
             UpdateCompleteValue(1f, 1f);
             yield return null;
         }
-        #endregion
 
-        #region DownloadMainFile
         /// <summary>
         ///   开始进行主要文件下载,下载至缓存目录
         /// </summary>
-        IEnumerator StartDownloadMainConfig()
+        IEnumerator UpdatingDownloadAllConfig()
         {
             if (ErrorCode != emErrorCode.None)
                 yield break;
 
             //下载主配置文件
-            for (int i = 0; i < Common.MAIN_CONFIG_NAME_ARRAY.Length; ++i )
+            for (int i = 0; i < Common.CONFIG_NAME_ARRAY.Length; ++i )
             {
                 file_download_ = new FileDownload(current_url_
-                                        , Common.CACHE_PATH
-                                        , Common.MAIN_CONFIG_NAME_ARRAY[i]);
+                                        , Common.UPDATER_CACHE_PATH
+                                        , Common.CONFIG_NAME_ARRAY[i]);
                 file_download_.Start();
                 while (!file_download_.IsDone)
                 {
@@ -278,23 +330,30 @@ namespace zcode.AssetBundlePacker
                 }
                 if (file_download_.IsFailed)
                 {
-                    Error(emErrorCode.DownloadMainConfigFileFailed
-                        , Common.MAIN_CONFIG_NAME_ARRAY[i] + " download failed!");
-                    yield break;
+                    if (Common.CONFIG_REQUIRE_CONDITION_ARRAY[i])
+                    {
+                        Error(emErrorCode.DownloadMainConfigFileFailed
+                        , Common.CONFIG_NAME_ARRAY[i] + " download failed!");
+                        yield break;
+                    }
+
+                    if (file_download_.ErrorCode == HttpAsyDownload.emErrorCode.DiskFull)
+                    {
+                        Error(emErrorCode.DiskFull);
+                        yield break;
+                    }
                 }
                 file_download_ = null;
-                UpdateCompleteValue(i, Common.MAIN_CONFIG_NAME_ARRAY.Length);
+                UpdateCompleteValue(i, Common.CONFIG_NAME_ARRAY.Length);
             }
            
             yield return null;
         }
-        #endregion
 
-        #region UpdateAssetBundle
         /// <summary>
         ///   更新AssetBundle
         /// </summary>
-        IEnumerator StartUpdateAssetBundle()
+        IEnumerator UpdatingUpdateAssetBundle()
         {
             if (ErrorCode != emErrorCode.None)
                 yield break;
@@ -302,8 +361,8 @@ namespace zcode.AssetBundlePacker
             UpdateCompleteValue(0f, 0f);
 
             //载入新的ResourcesManifest
-            ResourcesManifest old_resource_manifest = AssetBundleManager.Instance.ResourcesManifest;
-            string file = Common.GetCacheFileFullName(Common.RESOURCES_MANIFEST_FILE_NAME);
+            ResourcesManifest old_resource_manifest = AssetBundleManager.Instance.ResManifest;
+            string file = Common.UPDATER_CACHE_PATH + "/" + Common.RESOURCES_MANIFEST_FILE_NAME;
             ResourcesManifest new_resources_manifest = Common.LoadResourcesManifestByPath(file);
             if (new_resources_manifest == null)
             {
@@ -314,7 +373,7 @@ namespace zcode.AssetBundlePacker
 
             //载入MainManifest
             AssetBundleManifest manifest = AssetBundleManager.Instance.MainManifest;
-            file = Common.GetCacheFileFullName(Common.MAIN_MANIFEST_FILE_NAME);
+            file = Common.UPDATER_CACHE_PATH + "/" + Common.MAIN_MANIFEST_FILE_NAME;
             AssetBundleManifest new_manifest = Common.LoadMainManifestByPath(file);
             if (new_manifest == null)
             {
@@ -326,9 +385,43 @@ namespace zcode.AssetBundlePacker
             //获取需下载的资源列表与删除的资源的列表
             List<string> download_files = new List<string>();
             List<string> delete_files = new List<string>();
-            CompareAssetBundleDifference(ref download_files, ref delete_files
+            ComparisonUtils.CompareAndCalcDifferenceFiles(ref download_files, ref delete_files
                                         , manifest, new_manifest
-                                        , old_resource_manifest, new_resources_manifest);
+                                        , old_resource_manifest, new_resources_manifest
+                                        , ComparisonUtils.emCompareMode.All);
+
+            // 进度控制
+            float totalProgress = delete_files.Count + download_files.Count;
+            float currentProgress = 0;
+
+            //载入下载缓存数据, 过滤缓存中已下载的文件
+            DownloadCache download_cache = new DownloadCache();
+            download_cache.Load(Common.DOWNLOADCACHE_FILE_PATH);
+            if (!download_cache.HasData())
+                download_cache = null;
+            if (download_cache != null)
+            {
+                var cache_itr = download_cache.Data.AssetBundles.GetEnumerator();
+                while (cache_itr.MoveNext())
+                {
+                    DownloadCacheData.AssetBundle elem = cache_itr.Current.Value;
+                    string name = elem.AssetBundleName;
+                    string full_name = Common.GetFileFullName(name);
+                    if (File.Exists(full_name))
+                    {
+                        string cache_hash = elem.Hash;
+                        string new_hash = new_manifest.GetAssetBundleHash(name).ToString();
+                        if (!string.IsNullOrEmpty(cache_hash)
+                                && cache_hash.CompareTo(new_hash) == 0)
+                        {
+                            download_files.Remove(name);
+                            ++currentProgress;
+                            UpdateCompleteValue(currentProgress, totalProgress);
+                            yield return null;
+                        }
+                    }
+                }
+            }
 
             //删除已废弃的文件
             if (delete_files.Count > 0)
@@ -339,7 +432,9 @@ namespace zcode.AssetBundlePacker
                     if (File.Exists(full_name))
                     {
                         File.Delete(full_name);
-                        yield return 0;
+                        ++currentProgress;
+                        UpdateCompleteValue(currentProgress, totalProgress);
+                        yield return null;
                     }
                 }
             }
@@ -349,200 +444,69 @@ namespace zcode.AssetBundlePacker
             ab_download_.Start(Common.PATH, download_files, new_resources_manifest);
             while (!ab_download_.IsDone)
             {
-                UpdateCompleteValue(ab_download_.CompletedSize, ab_download_.TotalSize);
-                yield return 0;
+                UpdateCompleteValue(currentProgress + ab_download_.CompleteDownloadList.Count, totalProgress);
+                yield return null;
             }
             if (ab_download_.IsFailed)
             {
-                Error(emErrorCode.DownloadAssetBundleFailed);
+                Error(ab_download_.ErrorCode);
                 yield break;
             }
         }
 
-        /// <summary>
-        ///   比较AssetBundle差异，获得下载列表与删除列表
-        /// </summary>
-        static void CompareAssetBundleDifference(ref List<string> download_files
-                                                , ref List<string> delete_files
-                                                , AssetBundleManifest old_manifest
-                                                , AssetBundleManifest new_manifest
-                                                , ResourcesManifest old_resourcesmanifest
-                                                , ResourcesManifest new_resourcesmanifest)
-        {
-            if (download_files != null)
-                download_files.Clear();
-            if (delete_files != null)
-                delete_files.Clear();
-
-            if (old_manifest == null)
-                return;
-            if (new_manifest == null)
-                return;
-            if (new_resourcesmanifest == null)
-                return;
-
-            //采用位标记的方式判断资源
-            //位标记： 0： 存在旧资源中 1： 存在新资源中 2：本地资源标记
-            int old_version_bit = 0x1;                      // 存在旧资源中
-            int new_version_bit = 0x2;                      // 存在新资源中
-            int old_version_native_bit = 0x4;               // 旧的本地资源
-            int new_version_native_bit = 0x8;               // 新的本地资源
-            Dictionary<string, int> temp_dic = new Dictionary<string, int>();
-            //标记旧资源
-            string[] all_assetbundle = old_manifest.GetAllAssetBundles();
-            for (int i = 0; i < all_assetbundle.Length; ++i)
-            {
-                string name = all_assetbundle[i];
-                _SetDictionaryBit(ref temp_dic, name, old_version_bit);
-            }
-            //标记新资源
-            string[] new_all_assetbundle = new_manifest.GetAllAssetBundles();
-            for (int i = 0; i < new_all_assetbundle.Length; ++i)
-            {
-                string name = new_all_assetbundle[i];
-                _SetDictionaryBit(ref temp_dic, name, new_version_bit);
-            }
-
-            //标记旧的本地资源
-            if(old_resourcesmanifest.Data != null && old_resourcesmanifest.Data.AssetBundles != null)
-            {
-                var resource_manifest_itr = old_resourcesmanifest.Data.AssetBundles.GetEnumerator();
-                while (resource_manifest_itr.MoveNext())
-                {
-                    if (resource_manifest_itr.Current.Value.IsNative)
-                    {
-                        string name = resource_manifest_itr.Current.Value.AssetBundleName;
-                        _SetDictionaryBit(ref temp_dic, name, old_version_native_bit);
-                    }
-                }
-            }
-
-            //标记新的本地资源
-            if (new_resourcesmanifest.Data != null && new_resourcesmanifest.Data.AssetBundles != null)
-            {
-                var resource_manifest_itr = new_resourcesmanifest.Data.AssetBundles.GetEnumerator();
-                while (resource_manifest_itr.MoveNext())
-                {
-                    if (resource_manifest_itr.Current.Value.IsNative)
-                    {
-                        string name = resource_manifest_itr.Current.Value.AssetBundleName;
-                        _SetDictionaryBit(ref temp_dic, name, new_version_native_bit);
-                    }
-                }
-            }
-
-            //获得对应需操作的文件名， 优先级： both > add > delete
-            //both: 第0位与第1位都被标记的
-            //delete: 仅第0位被标记的
-            //add: 第2位未标记，且第3位被标记的
-            int both_bit = old_version_bit | new_version_bit;        // 二个版本资源都存在
-            List<string> add_files = new List<string>();
-            List<string> both_files = new List<string>();
-            var itr = temp_dic.GetEnumerator();
-            while (itr.MoveNext())
-            {
-                string name = itr.Current.Key;
-                int mask = itr.Current.Value;
-                if ((mask & new_version_native_bit) == new_version_native_bit
-                    && (mask & old_version_native_bit) == 0)
-                    add_files.Add(name);
-                else if ((mask & both_bit) == both_bit)
-                    both_files.Add(name);
-                else if ((mask & old_version_bit) == old_version_bit)
-                    delete_files.Add(name);
-            }
-            itr.Dispose();
-
-            //载入下载缓存数据
-            DownloadCache download_cache = new DownloadCache();
-            download_cache.Load(Common.DOWNLOADCACHE_FILE_PATH);
-            if (!download_cache.HasData())
-                download_cache = null;
-
-            //记录需下载的文件
-            {
-                //加入新增的文件
-                download_files.AddRange(add_files);
-                //比较所有同时存在的文件，判断哪些需要更新
-                for (int i = 0; i < both_files.Count; ++i)
-                {
-                    string name = both_files[i];
-                    string full_name = Common.GetFileFullName(name);
-                    if (File.Exists(full_name))
-                    {
-                        //判断哈希值是否相等
-                        string old_hash = old_manifest.GetAssetBundleHash(name).ToString();
-                        string new_hash = new_manifest.GetAssetBundleHash(name).ToString();
-                        if (old_hash.CompareTo(new_hash) == 0)
-                            continue;
-
-                        download_files.Add(name);
-                    }
-                }
-
-                //过滤缓存中已下载的文件
-                if (download_cache != null)
-                {
-                    var cache_itr = download_cache.Data.AssetBundles.GetEnumerator();
-                    while (cache_itr.MoveNext())
-                    {
-                        DownloadCacheData.AssetBundle elem = cache_itr.Current.Value;
-                        string name = elem.AssetBundleName;
-                        string full_name = Common.GetFileFullName(name);
-                        if (File.Exists(full_name))
-                        {
-                            string cache_hash = elem.Hash;
-                            string new_hash = new_manifest.GetAssetBundleHash(name).ToString();
-                            if (!string.IsNullOrEmpty(cache_hash)
-                                    && cache_hash.CompareTo(new_hash) == 0)
-                                download_files.Remove(name);
-                        }
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        static void _SetDictionaryBit(ref Dictionary<string, int> dic, string name, int bit)
-        {
-            if (!dic.ContainsKey(name))
-            {
-                dic.Add(name, bit);
-            }
-            else
-            {
-                dic[name] |= bit;
-            }
-        }
-        #endregion
-
-        #region CopyCacheFile
         /// <summary>
         ///   拷贝文件并覆盖旧数据文件
         /// </summary>
-        IEnumerator StartCopyCacheFile()
+        IEnumerator UpdatingCopyCacheFile()
         {
-            if (ErrorCode != emErrorCode.None)
-                yield break;
+            if (ErrorCode != emErrorCode.None) { yield break; }
 
-            //从缓存中拷贝主配置文件覆盖旧文件
-            for (int i = 0; i < Common.MAIN_CONFIG_NAME_ARRAY.Length; ++i)
+            //从缓存中剪切主配置文件覆盖旧文件
+            for (int i = 0; i < Common.CONFIG_NAME_ARRAY.Length; ++i)
             {
-                string str = Common.GetCacheFileFullName(Common.MAIN_CONFIG_NAME_ARRAY[i]);
-                string dest = Common.GetFileFullName(Common.MAIN_CONFIG_NAME_ARRAY[i]);
-                UpdateCompleteValue(i, Common.MAIN_CONFIG_NAME_ARRAY.Length);
-                yield return Common.StartCopyFile(str, dest);
+                UpdateCompleteValue(i, Common.CONFIG_NAME_ARRAY.Length);
+                try
+                {
+                    var file = Common.CONFIG_NAME_ARRAY[i];
+                    var src = Common.GetUpdaterCacheFileFullName(file);
+                    var dest = Common.GetFileFullName(file);
+                    if (File.Exists(dest))
+                    {
+                        File.Delete(dest);
+                    }
+                    File.Move(src, dest);
+                }
+                catch (System.Exception ex)
+                {
+                    if (Common.CONFIG_REQUIRE_CONDITION_ARRAY[i])
+                    {
+                        var message = Common.CONFIG_NAME_ARRAY[i] + ", " + ex.Message;
+                        ErrorWriteFile(emIOOperateCode.Fail, message);
+                        break;
+                    }
+                }
+                
+            }
+
+            // 拷贝失败则需要把本地配置文件删除
+            // （由于部分配置文件拷贝失败，会导致本地的配置文件不匹配会引起版本信息错误， 统一全部删除则下次进入游戏会重新从安装包拷贝全部数据）
+            if (IsFailed)
+            {
+                for (int i = 0; i < Common.CONFIG_NAME_ARRAY.Length; ++i)
+                {
+                    var fileFullName = Common.GetFileFullName(Common.CONFIG_NAME_ARRAY[i]);
+                    if (File.Exists(fileFullName))
+                    {
+                        File.Delete(fileFullName);
+                    }
+                }
             }
         }
-        #endregion
 
-        #region Dispose
         /// <summary>
         ///   清理
         /// </summary>
-        IEnumerator StartDispose()
+        IEnumerator UpdatingDispose()
         {
             UpdateCompleteValue(0f, 1f);
 
@@ -554,17 +518,73 @@ namespace zcode.AssetBundlePacker
             else
             {
                 //删除缓存目录
-                if (Directory.Exists(Common.CACHE_PATH))
-                    Directory.Delete(Common.CACHE_PATH, true);
+                if (Directory.Exists(Common.UPDATER_CACHE_PATH))
+                    Directory.Delete(Common.UPDATER_CACHE_PATH, true);
 
                 //重启AssetBundleManager
                 AssetBundleManager.Instance.Relaunch();
+                var abMgr = AssetBundleManager.Instance;
+                while(!abMgr.WaitForLaunch())
+                {
+                    yield return null;
+                }
+                if(abMgr.IsFailed)
+                {
+                    if (abMgr.ErrorCode == zcode.AssetBundlePacker.emErrorCode.DiskFull)
+                    {
+                        Error(emErrorCode.DiskFull);
+                    }
+                    else
+                    {
+                        Error(abMgr.ErrorCode);
+                    }
+                }
             }
 
             UpdateCompleteValue(1f, 1f);
-            yield return 0;
+            yield return null;
         }
-        #endregion
+
+        void CutCacheFileToNative(string file)
+        {
+            try
+            {
+                var src = Common.GetUpdaterCacheFileFullName(file);
+                var dest = Common.GetFileFullName(file);
+                if(!File.Exists(src))
+                {
+                    return;
+                }
+                if(File.Exists(dest))
+                {
+                    File.Delete(dest);
+                }
+                File.Move(src, dest);
+            }
+            catch (System.Exception ex)
+            {
+                ErrorWriteFile(emIOOperateCode.Fail, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        void ErrorWriteFile(emIOOperateCode resultCode, string message)
+        {
+            if (resultCode == emIOOperateCode.DiskFull)
+            {
+                string ms = string.IsNullOrEmpty(message) ?
+                "Disk Full!" : "Disk Full, " + message;
+                Error(emErrorCode.DiskFull, ms);
+            }
+            else if (resultCode == emIOOperateCode.Fail)
+            {
+                string ms = string.IsNullOrEmpty(message) ?
+                "WriteException!" : "WriteException, " + message;
+                Error(emErrorCode.WriteException, ms);
+            }
+        }
 
         #region Other
         /// <summary>
@@ -575,8 +595,7 @@ namespace zcode.AssetBundlePacker
             IsDone = false;
             ErrorCode = emErrorCode.None;
             CurrentState = emState.None;
-            CurrentStateCompleteValue = 0f;
-            CurrentStateTotalValue = 0f;
+            CurrentProgress = 0f;
             current_url_ = "";
         }
 
@@ -601,17 +620,11 @@ namespace zcode.AssetBundlePacker
         /// <summary>
         ///   更新完成度
         /// </summary>
-        void UpdateCompleteValue(float current)
-        {
-            UpdateCompleteValue(current, CurrentStateTotalValue);
-        }
-        /// <summary>
-        ///   更新完成度
-        /// </summary>
         void UpdateCompleteValue(float current, float total)
         {
-            CurrentStateCompleteValue = current;
-            CurrentStateTotalValue = total;
+            float ratio = STATE_PROGRESS_RATIO[(int)CurrentState, 0];
+            float min = STATE_PROGRESS_RATIO[(int)CurrentState, 1];
+            CurrentProgress = (current / total) * ratio + min;
             OnUpdateEvent();
         }
 
@@ -640,9 +653,10 @@ namespace zcode.AssetBundlePacker
         {
             ErrorCode = ec;
 
-            string ms = string.IsNullOrEmpty(message) ?
-                ErrorCode.ToString() : ErrorCode.ToString() + " - " + message;
-            Debug.LogError(ms);
+            StringBuilder sb = new StringBuilder("[Updater] - ");
+            sb.Append(ErrorCode.ToString());
+            if (!string.IsNullOrEmpty(message)) { sb.Append("\n"); sb.Append(message); }
+            Debug.LogError(sb.ToString());
         }
 
         /// <summary>
@@ -653,11 +667,11 @@ namespace zcode.AssetBundlePacker
             if (CurrentState < emState.UpdateAssetBundle)
                 return;
 
-            if (!Directory.Exists(Common.CACHE_PATH))
+            if (!Directory.Exists(Common.UPDATER_CACHE_PATH))
                 return;
 
             //载入新的Manifest
-            string new_manifest_name = Common.GetCacheFileFullName(Common.MAIN_MANIFEST_FILE_NAME);
+            string new_manifest_name = Common.UPDATER_CACHE_PATH + "/" + Common.MAIN_MANIFEST_FILE_NAME;
             AssetBundleManifest new_manifest = Common.LoadMainManifestByPath(new_manifest_name);
             if (new_manifest == null)
                 return;
@@ -667,12 +681,12 @@ namespace zcode.AssetBundlePacker
             DownloadCache cache = new DownloadCache();
             cache.Load(Common.DOWNLOADCACHE_FILE_PATH);
             if (ab_download_ != null
-                && ab_download_.CompleteDownloads != null
-                && ab_download_.CompleteDownloads.Count > 0)
+                && ab_download_.CompleteDownloadList != null
+                && ab_download_.CompleteDownloadList.Count > 0)
             {
-                for (int i = 0; i < ab_download_.CompleteDownloads.Count; ++i)
+                for (int i = 0; i < ab_download_.CompleteDownloadList.Count; ++i)
                 {
-                    string assetbundle_name = ab_download_.CompleteDownloads[i];
+                    string assetbundle_name = ab_download_.CompleteDownloadList[i];
                     Hash128 hash_code = new_manifest.GetAssetBundleHash(assetbundle_name);
                     if (hash_code.isValid && !cache.Data.AssetBundles.ContainsKey(assetbundle_name))
                     {
@@ -699,6 +713,14 @@ namespace zcode.AssetBundlePacker
         void Awake()
         {
             Reset();
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        void OnDestroy()
+        {
+            AbortUpdate();
         }
         #endregion
     }

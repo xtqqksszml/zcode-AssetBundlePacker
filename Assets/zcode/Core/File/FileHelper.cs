@@ -150,20 +150,34 @@ namespace zcode
         /// <param name="path">文件全局路径</param>
         /// <param name="bytes">写入的内容.</param>
         /// <param name="length">写入长度.</param>
-        public static void WriteBytesToFile(string path, byte[] bytes, int length)
+        public static emIOOperateCode WriteBytesToFile(string path, byte[] bytes, int length)
         {
-            string directory = Path.GetDirectoryName(path);
-            if (!Directory.Exists(directory))
-                Directory.CreateDirectory(directory);
-
-            FileInfo t = new FileInfo(path);
-            using (Stream sw = t.Open(FileMode.Create, FileAccess.ReadWrite))
+            try
             {
-                if (bytes != null && length > 0)
+                string directory = Path.GetDirectoryName(path);
+                if (!Directory.Exists(directory))
+                    Directory.CreateDirectory(directory);
+
+                FileInfo t = new FileInfo(path);
+                using (Stream sw = t.Open(FileMode.Create, FileAccess.ReadWrite))
                 {
-                    //以行的形式写入信息
-                    sw.Write(bytes, 0, length);
+                    if (bytes != null && length > 0)
+                    {
+                        //以行的形式写入信息
+                        sw.Write(bytes, 0, length);
+                    }
                 }
+
+                return emIOOperateCode.Succeed;
+            }
+            catch (System.IO.IOException ex)
+            {
+                Debug.LogErrorFormat("WriteBytesToFile() = FAILED! Msg:{0}, Type:{1}", ex.Message, ex.GetType());
+                return emIOOperateCode.DiskFull;
+            }
+            catch(Exception)
+            {
+                return emIOOperateCode.Fail;
             }
         }
 
@@ -258,27 +272,32 @@ namespace zcode
         /// <summary>
         ///   
         /// </summary>
-        public static IEnumerator CopyStreamingAssetsToFile(string src, string dest)
+        public static IEnumerator CopyStreamingAssetsToFile(string src, string dest, bool force = false)
         {
 #if UNITY_EDITOR || UNITY_STANDALONE_WIN || UNITY_IPHONE
             src = "file:///" + src;
 #endif
-            using (WWW w = new WWW(src))
+            bool is_done = false;
+            do 
             {
-                yield return w;
-
-                if (string.IsNullOrEmpty(w.error))
+                using (WWW w = new WWW(src))
                 {
-                    while (w.isDone == false)
-                        yield return null;
+                    yield return w;
 
-                    zcode.FileHelper.WriteBytesToFile(dest, w.bytes, w.bytes.Length);
+                    if (!string.IsNullOrEmpty(w.error))
+                    {
+                        is_done = false;
+                        Debug.LogWarning(w.error);
+                    }
+                    else
+                    {
+                        if (w.isDone && w.bytes.Length > 0)
+                            zcode.FileHelper.WriteBytesToFile(dest, w.bytes, w.bytes.Length);
+
+                        is_done = true;
+                    }
                 }
-                else
-                {
-                    Debug.LogWarning(w.error);
-                }
-            }
+            } while (force && !is_done);
         }
 
         /// <summary>
@@ -303,9 +322,10 @@ namespace zcode
             {
                 if (Directory.Exists(path))
                 {
-                    if (File.Exists(path + "\\" + filesName))
+                    string full_name = path + "/" + filesName;
+                    if (File.Exists(full_name))
                     {
-                        File.Delete(path + "\\" + filesName);
+                        File.Delete(full_name);
                         isDelete = true;
                     }
                 }

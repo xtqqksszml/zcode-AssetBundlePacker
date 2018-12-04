@@ -34,13 +34,12 @@ namespace zcode.AssetBundlePacker
         /// 资源加载方式，默认采用DefaultLoadPattern
         /// </summary>
         public static ILoadPattern LoadPattern = new DefaultLoadPattern();
-
        
         /// <summary>
         ///   加载一个资源
         /// <param name="asset">资源局部路径（"Assets/..."）</param>
         /// </summary>
-        public static T Load<T>(string asset)
+        public static T Load<T>(string asset, bool allowUnloadAssetBundle = true)
                 where T : Object
         {
             T result = null;
@@ -49,7 +48,7 @@ namespace zcode.AssetBundlePacker
             if (LoadPattern.ResourcesLoadPattern == emLoadPattern.EditorAsset
                 || LoadPattern.ResourcesLoadPattern == emLoadPattern.All)
             {
-                result = ResourcesManager.LoadAssetAtPath<T>(asset);
+                result = LoadAssetAtPath<T>(asset);
                 if (result != null)
                     return result;
             }
@@ -58,14 +57,14 @@ namespace zcode.AssetBundlePacker
             if (LoadPattern.ResourcesLoadPattern == emLoadPattern.AssetBundle
                 || LoadPattern.ResourcesLoadPattern == emLoadPattern.All)
             {
-                result = AssetBundleManager.Instance.LoadAsset<T>(asset);
+                result = AssetBundleManager.Instance.LoadAsset<T>(asset, allowUnloadAssetBundle);
                 if (result != null)
                     return result;
             }
             if (LoadPattern.ResourcesLoadPattern == emLoadPattern.Original 
                 || LoadPattern.ResourcesLoadPattern == emLoadPattern.All)
             {
-                result = ResourcesManager.LoadResources<T>(asset);
+                result = LoadFromResources<T>(asset);
                 if (result != null)
                     return result;
             }
@@ -74,10 +73,22 @@ namespace zcode.AssetBundlePacker
         }
 
         /// <summary>
+        /// 卸载一个资源(非GameObject)
+        /// </summary>
+        public static void Unload(string asset)
+        {
+            if (LoadPattern.ResourcesLoadPattern == emLoadPattern.AssetBundle
+                || LoadPattern.ResourcesLoadPattern == emLoadPattern.All)
+            {
+                AssetBundleManager.Instance.UnloadAsset(asset);
+            }
+        }
+
+        /// <summary>
         ///   加载一个Resources下资源
         /// <param name="asset">资源局部路径（"Assets/..."）</param>
         /// </summary>
-        public static T LoadResources<T>(string asset)
+        public static T LoadFromResources<T>(string asset)
             where T : Object
         {
             //去除扩展名

@@ -62,22 +62,27 @@ namespace zcode.AssetBundlePacker
         /// <summary>
         ///   需要下载的资源
         /// </summary>
-        public List<string> ImcompleteDownloads { get; private set; }
+        public List<string> UncompleteDownloadList { get; private set; }
+
+        /// <summary>
+        ///   正在下载的资源
+        /// </summary>
+        public List<string> DownloadingList { get; private set; }
 
         /// <summary>
         ///   已下载的资源
         /// </summary>
-        public List<string> CompleteDownloads { get; private set; }
+        public List<string> CompleteDownloadList { get; private set; }
 
         /// <summary>
         ///   下载失败的资源
         /// </summary>
-        public List<string> FailedDownloads { get; private set; }
+        public List<string> FailedDownloadList { get; private set; }
 
         /// <summary>
         ///   http下载
         /// </summary>
-        private List<HttpAsyDownload> downloads_ = new List<HttpAsyDownload>();
+        private List<HttpAsyDownload> downloads_;
 
         /// <summary>
         ///   资源描述数据
@@ -87,7 +92,7 @@ namespace zcode.AssetBundlePacker
         /// <summary>
         ///   锁对象，用于保证多线程下载安全
         /// </summary>
-        object lock_obj_ = new object();
+        readonly object lock_obj_ = new object();
 
         /// <summary>
         ///   下载资源
@@ -100,9 +105,12 @@ namespace zcode.AssetBundlePacker
             ErrorCode = emErrorCode.None;
             CompletedSize = 0;
             TotalSize = 0;
-            ImcompleteDownloads = new List<string>();
-            CompleteDownloads = new List<string>();
-            FailedDownloads = new List<string>();
+            UncompleteDownloadList = new List<string>();
+            CompleteDownloadList = new List<string>();
+            FailedDownloadList = new List<string>();
+            DownloadingList = new List<string>();
+
+            downloads_ = new List<HttpAsyDownload>();
 
             System.Net.ServicePointManager.DefaultConnectionLimit = concurrence_download_number;
         }
@@ -131,13 +139,50 @@ namespace zcode.AssetBundlePacker
 
             if (resources_manifest == null)
             {
-                IsDone = true; ErrorCode = emErrorCode.ParameterError;
+                Error(emErrorCode.ParameterError);
                 return false;
             }
+            if (assetbundles == null || assetbundles.Count == 0)
+            {
+                IsDone = true;
+                return true;
+            }
 
-            InitializeDownload(root, assetbundles, resources_manifest);
-            UpdateState();
-            DownloadAll();
+            IsDone = false;
+            ErrorCode = emErrorCode.None;
+
+            Root = root;
+            resources_manifest_ = resources_manifest;
+            UncompleteDownloadList = assetbundles;
+            CompleteDownloadList.Clear();
+            FailedDownloadList.Clear();
+
+            //统计下载数据
+            TotalSize = 0;
+            CompletedSize = 0;
+            for (int i = 0; i < UncompleteDownloadList.Count; ++i)
+            {
+                var ab = resources_manifest_.Find(UncompleteDownloadList[i]);
+                if (ab != null)
+                {
+                    if (ab.IsCompress)
+                        TotalSize += ab.CompressSize;
+                    else
+                        TotalSize += ab.Size;
+                }
+            }
+
+            //开始下载
+            for (int i = 0; i < System.Net.ServicePointManager.DefaultConnectionLimit; ++i)
+            {
+                HttpAsyDownload d = new HttpAsyDownload(URL);
+                downloads_.Add(d);
+                var assetbundlename = GetImcomplete();
+                if (!string.IsNullOrEmpty(assetbundlename))
+                {
+                    Download(downloads_[i], assetbundlename);
+                }
+            }
 
             return true;
         }
@@ -151,6 +196,7 @@ namespace zcode.AssetBundlePacker
             {
                 downloads_[i].Cancel();
             }
+            downloads_.Clear();
         }
 
         /// <summary>
@@ -162,133 +208,60 @@ namespace zcode.AssetBundlePacker
             {
                 downloads_[i].Abort();
             }
+            downloads_.Clear();
         }
 
         /// <summary>
-        /// 初始化下载信息
+        /// 
         /// </summary>
-        void InitializeDownload(string root
-            , List<string> assetbundles
-            , ResourcesManifest resources_manifest)
+        string GetImcomplete()
         {
-            Root = root;
-            ImcompleteDownloads = assetbundles;
-            resources_manifest_ = resources_manifest;
-
-            IsDone = false;
-            ErrorCode = emErrorCode.None;
-            CompleteDownloads.Clear();
-            FailedDownloads.Clear();
-
-            if (ImcompleteDownloads == null) ImcompleteDownloads = new List<string>();
-
-            //统计数据
-            TotalSize = 0;
-            CompletedSize = 0;
-            for (int i = 0; i < ImcompleteDownloads.Count; ++i)
-            {
-                var ab = resources_manifest_.Find(ImcompleteDownloads[i]);
-                if(ab != null)
-                {
-                    if(ab.IsCompress)
-                        TotalSize += ab.CompressSize;
-                    else
-                        TotalSize += ab.Size;
-                }
-            }
-        }
-
-
-        /// <summary>
-        ///   是否正在下载
-        /// </summary>
-        public bool IsDownLoading(string file_name)
-        {
-            HttpAsyDownload ad = downloads_.Find(delegate(HttpAsyDownload d)
-            {
-                return d.LocalName == file_name;
-            });
-
-            return ad != null;
-        }
-
-        /// <summary>
-        /// 获得或创建一个闲置的下载
-        /// </summary>
-        HttpAsyDownload GetIdleDownload(bool is_create)
-        {
-            lock(lock_obj_)
-            {
-                for (int i = 0; i < downloads_.Count; ++i)
-                {
-                    if (downloads_[i].IsDone)
-                        return downloads_[i];
-                }
-
-                if (is_create)
-                {
-                    if (downloads_.Count < System.Net.ServicePointManager.DefaultConnectionLimit)
-                    {
-                        HttpAsyDownload d = new HttpAsyDownload(URL);
-                        downloads_.Add(d);
-                        return d;
-                    }
-                }
-
+            if (UncompleteDownloadList == null || UncompleteDownloadList.Count == 0)
                 return null;
-            }
+
+            var name = UncompleteDownloadList[UncompleteDownloadList.Count - 1];
+            UncompleteDownloadList.RemoveAt(UncompleteDownloadList.Count - 1);
+            return name;
         }
 
         /// <summary>
-        ///   下载所有资源
+        ///   
         /// </summary>
-        void DownloadAll()
+        void Error(emErrorCode ec, string message = null)
         {
             lock (lock_obj_)
             {
-                //下载
-                for (int i = 0; i < ImcompleteDownloads.Count; ++i)
-                {
-                    if (!Download(ImcompleteDownloads[i]))
-                        break;
-                }
-            }
-        }
+                string ms = string.IsNullOrEmpty(message) ? ec.ToString() : ec.ToString() + " - " + message;
+                Debug.LogError(ms);
 
-        /// <summary>
-        ///   更新
-        /// </summary>
-        void UpdateState()
-        {
-            IsDone = ImcompleteDownloads.Count == 0;
-            ErrorCode = FailedDownloads.Count > 0 ? emErrorCode.DownloadFailed : ErrorCode;
+                ErrorCode = ec;
+                IsDone = true;
+                Abort();
+            }
         }
 
         /// <summary>
         ///   下载
         /// </summary>
-        bool Download(string assetbundlename)
+        bool Download(HttpAsyDownload d, string assetbundlename)
         {
             lock (lock_obj_)
             {
+                if (string.IsNullOrEmpty(assetbundlename))
+                {
+                    return false;
+                }
                 var ab = resources_manifest_.Find(assetbundlename);
                 if (ab == null)
                 {
                     Debug.LogWarning("AssetBundleDownloader.Download - AssetBundleName is invalid.");
                     return true;
                 }
-                    
-                string file_name = ab.IsCompress ?
-                    Compress.GetCompressFileName(assetbundlename) : assetbundlename;
-                if (!IsDownLoading(file_name))
-                {
-                    HttpAsyDownload d = GetIdleDownload(true);
-                    if (d == null)
-                        return false;
 
-                    d.Start(Root, file_name, _DownloadNotify, _DownloadError);
-                }
+                DownloadingList.Add(assetbundlename);
 
+                string file_name = ab.IsCompress ? Compress.GetCompressFileName(assetbundlename) : assetbundlename;
+                d.Start(Root, file_name, _DownloadNotify, _DownloadError);
                 return true;
             }
         }
@@ -301,19 +274,16 @@ namespace zcode.AssetBundlePacker
             lock (lock_obj_)
             {
                 bool is_compress = Compress.IsCompressFile(file_name);
-                string assetbundle = is_compress ? 
-                    Compress.GetDefaultFileName(file_name) : file_name;
-
-                if (ImcompleteDownloads.Contains(assetbundle))
-                    ImcompleteDownloads.Remove(assetbundle);
-                CompleteDownloads.Add(assetbundle);
+                string assetbundlename = is_compress ?  Compress.GetDefaultFileName(file_name) : file_name;
+                CompleteDownloadList.Add(assetbundlename);
+                DownloadingList.Remove(assetbundlename);
 
                 //判断是否需要解压文件
-                if(is_compress)
+                if (is_compress)
                 {
                     // 解压文件
                     string in_file = Root + "/" + file_name;
-                    string out_file = Root + "/" + assetbundle;
+                    string out_file = Root + "/" + assetbundlename;
                     Compress.DecompressFile(in_file, out_file);
                     // 删除压缩包
                     System.IO.File.Delete(in_file);
@@ -328,14 +298,25 @@ namespace zcode.AssetBundlePacker
         {
             lock (lock_obj_)
             {
+                CompletedSize += size;
+
                 if (d.IsDone)
                 {
                     DownloadSucceed(d.LocalName);
-                    DownloadAll();
-                }
 
-                CompletedSize += size;
-                UpdateState();
+                    if(UncompleteDownloadList.Count == 0 && DownloadingList.Count == 0)
+                    {
+                        IsDone = true;
+                    }
+                    else
+                    {
+                        var assetbundlename = GetImcomplete();
+                        if (!string.IsNullOrEmpty(assetbundlename))
+                        {
+                            Download(d, assetbundlename);
+                        }
+                    }
+                }
             }
         }
 
@@ -346,13 +327,21 @@ namespace zcode.AssetBundlePacker
         {
             lock (lock_obj_)
             {
-                //从未下载列表中移除
-                if (ImcompleteDownloads.Contains(d.LocalName))
-                    ImcompleteDownloads.Remove(d.LocalName);
                 //加入失败列表
-                FailedDownloads.Add(d.LocalName);
-                DownloadAll();
-                UpdateState();
+                string file_name = d.LocalName;
+                bool is_compress = Compress.IsCompressFile(file_name);
+                string assetbundlename = is_compress ? Compress.GetDefaultFileName(file_name) : file_name;
+                FailedDownloadList.Add(assetbundlename);
+                DownloadingList.Remove(assetbundlename);
+
+                if(d.ErrorCode == HttpAsyDownload.emErrorCode.DiskFull)
+                {
+                    Error(emErrorCode.DiskFull, assetbundlename);
+                }
+                else
+                {
+                    Error(emErrorCode.DownloadFailed, assetbundlename);
+                }
             }
         }
     }

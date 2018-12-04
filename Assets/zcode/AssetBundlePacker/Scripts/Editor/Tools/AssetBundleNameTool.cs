@@ -30,8 +30,13 @@ namespace zcode.AssetBundlePacker
                 float total = (float)build.Data.Assets.Root.Count();
                 float current = 0;
 
+
                 //从默认路径
-                ChangeAssetBundleName(EditorCommon.ASSET_START_PATH, build.Data.Assets.Root, (name) =>
+                ChangeAssetBundleName(EditorCommon.ASSET_START_PATH
+                    , build.BuildStartFullPath
+                    , build.Data.Assets.Root
+                    , emAssetBundleNameRule.None
+                    , (name) =>
                     {
                         //进度条提示
                         current += 1.0f;
@@ -39,7 +44,6 @@ namespace zcode.AssetBundlePacker
                         if (EditorUtility.DisplayCancelableProgressBar("正在生成AssetBundleName", "Change " + name, progress))
                             cancel_running_nametool_ = true;
                     });
-
                 EditorUtility.ClearProgressBar();
                 return !cancel_running_nametool_;
             }
@@ -56,40 +60,62 @@ namespace zcode.AssetBundlePacker
         ///   
         /// </summary>
         static void ChangeAssetBundleName(string folder_full_name
+                                          , string element_path
                                           , AssetBundleBuildData.AssetBuild.Element element
-                                          , System.Action<string> change_callback = null)
+                                          , emAssetBundleNameRule inherit_rule
+                                          , System.Action<string> change_report = null)
         {
             if (cancel_running_nametool_)
+            {
                 return;
+            }
+            if(string.IsNullOrEmpty(element_path))
+            {
+                return;
+            }
             if (element == null)
+            {
                 return;
-            
+            }
             DirectoryInfo dir = new DirectoryInfo(folder_full_name);
             if (!dir.Exists)
+            {
                 return;
+            }
 
-            if ((emAssetBundleNameRule)element.Rule == emAssetBundleNameRule.Ignore)
-                return;
+            if(inherit_rule != emAssetBundleNameRule.Ignore)
+            {
+                inherit_rule = (emAssetBundleNameRule)element.Rule;
+            }
+
+            bool same_directory = folder_full_name == element_path;
 
             //遍历文件,并设置其AssetBundleName
             FileInfo[] all_files = dir.GetFiles();
             foreach (var f in all_files)
             {
-                AssetBundleBuildData.AssetBuild.Element child = element.FindFileElement(f.Name);
-                emAssetBundleNameRule my_rule = child != null ? (emAssetBundleNameRule)child.Rule : emAssetBundleNameRule.None;
-
-                if (!EditorCommon.IsIgnoreFile(f.Name) && my_rule != emAssetBundleNameRule.Ignore)
+                if (!EditorCommon.IsIgnoreFile(f.Name))
                 {
-                    if (my_rule == emAssetBundleNameRule.SingleFile)
-                        SetAssetBundleName(f.FullName);
-                    else
+                    if(!same_directory)
+                    {
                         ClearAssetBundleName(f.FullName);
-                }
+                    }
+                    else
+                    {
+                        AssetBundleBuildData.AssetBuild.Element child = element.FindFileElement(f.Name);
+                        emAssetBundleNameRule my_rule = child != null ? (emAssetBundleNameRule)child.Rule : emAssetBundleNameRule.None;
 
-                if (child != null)
-                {
-                    if (change_callback != null)
-                        change_callback(f.FullName);
+                        if (child != null && change_report != null) { change_report(f.FullName); }
+
+                        if (my_rule == emAssetBundleNameRule.SingleFile && inherit_rule != emAssetBundleNameRule.Ignore)
+                        {
+                            SetAssetBundleName(f.FullName);
+                        }
+                        else
+                        {
+                            ClearAssetBundleName(f.FullName);
+                        }
+                    }
                 }
             }
 
@@ -99,28 +125,36 @@ namespace zcode.AssetBundlePacker
             {
                 if (!EditorCommon.IsIgnoreFolder(d.Name))
                 {
-                    AssetBundleBuildData.AssetBuild.Element child = element.FindFolderElement(d.Name);
-                    emAssetBundleNameRule my_rule = child != null ? (emAssetBundleNameRule)child.Rule : emAssetBundleNameRule.None;
-
-
-                    if (my_rule == emAssetBundleNameRule.Folder)
-                        SetAssetBundleName(d.FullName);
-                    else
-                        ClearAssetBundleName(d.FullName);
-
-
-                    if (child != null)
+                    string child_element_path = null;
+                    AssetBundleBuildData.AssetBuild.Element child = null;
+                    if (!same_directory)
                     {
-                        if (change_callback != null)
-                            change_callback(d.FullName);
+                        child_element_path = element_path;
+                        child = element;
+                        ClearAssetBundleName(d.FullName);
+                    }
+                    else
+                    {
+                        child_element_path = Common.CovertCommonPath(d.FullName);
+                        child = element.FindFolderElement(d.Name);
+                        emAssetBundleNameRule my_rule = child != null ? (emAssetBundleNameRule)child.Rule : emAssetBundleNameRule.None;
+
+                        if (child != null && change_report != null) { change_report(d.FullName); }
+
+                        if (my_rule == emAssetBundleNameRule.Folder && inherit_rule != emAssetBundleNameRule.Ignore)
+                        {
+                            SetAssetBundleName(d.FullName);
+                        }
+                        else
+                        {
+                            ClearAssetBundleName(d.FullName);
+                        }
                     }
 
-                    ChangeAssetBundleName(d.FullName, child, change_callback);
+                    ChangeAssetBundleName(Common.CovertCommonPath(d.FullName)
+                        , child_element_path, child, inherit_rule, change_report);
                 }
             }
-
-            //刷新
-            AssetDatabase.Refresh();
         }
 
         /// <summary>
@@ -133,9 +167,10 @@ namespace zcode.AssetBundlePacker
             if (importer != null)
             {
                 string str = EditorCommon.ConvertToAssetBundleName(full_name.ToLower());
-                importer.assetBundleName = str;
-                importer.assetBundleVariant = "";
-                importer.SaveAndReimport();
+                if(importer.assetBundleName != str)
+                {
+                    importer.SetAssetBundleNameAndVariant(str, "");
+                }
             }
         }
 
@@ -146,43 +181,10 @@ namespace zcode.AssetBundlePacker
         {
             full_name = EditorCommon.AbsoluteToRelativePath(full_name);
             AssetImporter importer = AssetImporter.GetAtPath(full_name);
-            if (importer != null)
+            if (importer != null && !string.IsNullOrEmpty(importer.assetBundleName))
             {
                 importer.assetBundleName = "";
-                importer.SaveAndReimport();
             }
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        public static void SetSelectionAssetBundleName()
-        {
-            foreach (var id in Selection.instanceIDs)
-            {
-                string str = AssetDatabase.GetAssetPath(id);
-                if (!EditorCommon.IsIgnoreFile(str))
-                {
-                    SetAssetBundleName(str);
-                }
-            }
-            AssetDatabase.Refresh();
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        public static void ClearSelectionAssetBundleName()
-        {
-            foreach (var id in Selection.instanceIDs)
-            {
-                string str = AssetDatabase.GetAssetPath(id);
-                if (!EditorCommon.IsIgnoreFile(str))
-                {
-                    ClearAssetBundleName(str);
-                }
-            }
-            AssetDatabase.Refresh();
         }
     }
 }
