@@ -1,0 +1,16 @@
+ManifestFileVersion: 0
+CRC: 2913060995
+Hashes:
+  AssetFileHash:
+    serializedVersion: 2
+    Hash: acfae9aef7eb3bdb7493a39f520d85ea
+  TypeTreeHash:
+    serializedVersion: 2
+    Hash: c1642440719609290a7e09a50a7286f4
+HashAppended: 0
+ClassTypes:
+- Class: 28
+  Script: {instanceID: 0}
+Assets:
+- Assets/Resources/Package_Level1/Texture/Tex_3.png
+Dependencies: []

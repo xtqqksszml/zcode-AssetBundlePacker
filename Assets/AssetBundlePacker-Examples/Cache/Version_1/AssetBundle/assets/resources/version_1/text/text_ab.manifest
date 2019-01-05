@@ -1,0 +1,16 @@
+ManifestFileVersion: 0
+CRC: 1452523263
+Hashes:
+  AssetFileHash:
+    serializedVersion: 2
+    Hash: 7cd5dbd84c9f53aa86fc987b67be8415
+  TypeTreeHash:
+    serializedVersion: 2
+    Hash: 1033bf7ddfd4c6d43e7a6382c0a0a61a
+HashAppended: 0
+ClassTypes:
+- Class: 49
+  Script: {instanceID: 0}
+Assets:
+- Assets/Resources/Version_1/Text/text.txt
+Dependencies: []

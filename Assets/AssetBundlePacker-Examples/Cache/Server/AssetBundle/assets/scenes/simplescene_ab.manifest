@@ -1,0 +1,14 @@
+ManifestFileVersion: 0
+CRC: 2503782649
+Hashes:
+  AssetFileHash:
+    serializedVersion: 2
+    Hash: f591101d922cfbf7a40ea48110abb870
+  TypeTreeHash:
+    serializedVersion: 2
+    Hash: 31d6cfe0d16ae931b73c59d7e0c089c0
+HashAppended: 0
+ClassTypes: []
+Assets:
+- Assets/Scenes/SimpleScene.unity
+Dependencies: []
