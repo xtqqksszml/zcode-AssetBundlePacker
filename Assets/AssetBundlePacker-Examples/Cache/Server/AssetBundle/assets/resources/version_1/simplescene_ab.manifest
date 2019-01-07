@@ -1,0 +1,38 @@
+ManifestFileVersion: 0
+CRC: 2852003839
+Hashes:
+  AssetFileHash:
+    serializedVersion: 2
+    Hash: 4288c371161be3692875fb8d4bb8a4d2
+  TypeTreeHash:
+    serializedVersion: 2
+    Hash: caad6add4fc65b1ac1885ce3146a4338
+HashAppended: 0
+ClassTypes:
+- Class: 1
+  Script: {instanceID: 0}
+- Class: 4
+  Script: {instanceID: 0}
+- Class: 21
+  Script: {instanceID: 0}
+- Class: 23
+  Script: {instanceID: 0}
+- Class: 28
+  Script: {instanceID: 0}
+- Class: 33
+  Script: {instanceID: 0}
+- Class: 43
+  Script: {instanceID: 0}
+- Class: 48
+  Script: {instanceID: 0}
+- Class: 64
+  Script: {instanceID: 0}
+- Class: 65
+  Script: {instanceID: 0}
+Assets:
+- Assets/Resources/Version_1/SimpleScene/Plane/Plane_Material.mat
+- Assets/Resources/Version_1/SimpleScene/Cube/Cube.prefab
+- Assets/Resources/Version_1/SimpleScene/Cube/Cube_Material.mat
+- Assets/Resources/Version_1/SimpleScene/Cube/Cube_Texture.png
+- Assets/Resources/Version_1/SimpleScene/Plane/Plane.prefab
+Dependencies: []
