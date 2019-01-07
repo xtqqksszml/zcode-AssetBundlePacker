@@ -24,30 +24,30 @@ namespace zcode.AssetBundlePacker
                                             , System.Action<string> callback
                                             , LoadSceneMode mode = LoadSceneMode.Single)
         {
-            AsyncOperation ao;
-            return LoadSceneAsync(out ao, scene_name, callback, mode);
+            SceneLoadRequest req;
+            return LoadSceneAsync(out req, scene_name, callback, mode);
         }
 
         /// <summary>
         ///   异步加载场景
         /// </summary>
-        public static AsyncOperation LoadSceneAsync(string scene_name
+        public static SceneLoadRequest LoadSceneAsync(string scene_name
                                                     , LoadSceneMode mode = LoadSceneMode.Single)
         {
-            AsyncOperation ao;
-            LoadSceneAsync(out ao, scene_name, null, mode);
-            return ao;
+            SceneLoadRequest req;
+            LoadSceneAsync(out req, scene_name, null, mode);
+            return req;
         }
 
         /// <summary>
         ///   异步加载场景
         /// </summary>
-        public static bool LoadSceneAsync(out AsyncOperation ao
+        public static bool LoadSceneAsync(out SceneLoadRequest req
                                             , string scene_name
                                             , System.Action<string> callback = null
                                             , LoadSceneMode mode = LoadSceneMode.Single)
         {
-            ao = null;
+            req = null;
 
 #if UNITY_EDITOR
             if (LoadPattern.SceneLoadPattern == emLoadPattern.EditorAsset
@@ -56,10 +56,11 @@ namespace zcode.AssetBundlePacker
                 if (!Application.CanStreamedLevelBeLoaded(scene_name))
                     return false;
 
-                ao = UnityEngine.SceneManagement.SceneManager.LoadSceneAsync(scene_name, mode);
+                var ao = UnityEngine.SceneManagement.SceneManager.LoadSceneAsync(scene_name, mode);
                 if (ao != null)
                 {
-                    CoroutineExecutor.Create(ao, () =>
+                    req = new SceneLoadRequest(ao);
+                    CoroutineExecutor.Create(req, () =>
                     {
                         if (callback != null) callback(scene_name);
                     });
@@ -71,10 +72,10 @@ namespace zcode.AssetBundlePacker
             if (LoadPattern.SceneLoadPattern == emLoadPattern.AssetBundle
                 || LoadPattern.SceneLoadPattern == emLoadPattern.All)
             {
-                ao = AssetBundleManager.Instance.LoadSceneAsync(scene_name, mode);
-                if (ao != null)
+                req = AssetBundleManager.Instance.LoadSceneAsync(scene_name, mode);
+                if (req != null)
                 {
-                    CoroutineExecutor.Create(ao, () =>
+                    CoroutineExecutor.Create(req, () =>
                     {
                         GenerateSceneObject(scene_name);
                         if (callback != null) callback(scene_name);
@@ -88,10 +89,11 @@ namespace zcode.AssetBundlePacker
                 if (!Application.CanStreamedLevelBeLoaded(scene_name))
                     return false;
 
-                ao = UnityEngine.SceneManagement.SceneManager.LoadSceneAsync(scene_name, mode);
+                var ao = UnityEngine.SceneManagement.SceneManager.LoadSceneAsync(scene_name, mode);
                 if (ao != null)
                 {
-                    CoroutineExecutor.Create(ao, () =>
+                    req = new SceneLoadRequest(ao);
+                    CoroutineExecutor.Create(req, () =>
                     {
                         if (callback != null) callback(scene_name);
                     });

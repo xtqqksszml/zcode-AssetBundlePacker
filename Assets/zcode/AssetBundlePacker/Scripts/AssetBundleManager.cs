@@ -348,7 +348,7 @@ namespace zcode.AssetBundlePacker
         /// <summary>
         ///   异步加载场景
         /// </summary>
-        public AsyncOperation LoadSceneAsync(string scene_name
+        public SceneLoadRequest LoadSceneAsync(string scene_name
                                                 , LoadSceneMode mode = LoadSceneMode.Single
                                                 , bool unload_assetbundle = true)
         {
@@ -364,24 +364,10 @@ namespace zcode.AssetBundlePacker
                 string assetbundlename = FindAssetBundleNameByScene(scene_name);
                 if (!string.IsNullOrEmpty(assetbundlename))
                 {
-                    // 加载依赖
-                    string[] deps = LoadDependenciesAssetBundle(assetbundlename);
-                    // 加载AssetBundle
-                    LoadAssetBundle(assetbundlename);
-                    // 加载场景
-                    AsyncOperation result = UnityEngine.SceneManagement.SceneManager.LoadSceneAsync(scene_name, mode);
-
-                    // 卸载AssetBundle
-                    if (unload_assetbundle)
-                    {
-                        DisposeAssetBundleCache(deps, false);
-                        DisposeAssetBundleCache(assetbundlename, false);
-                    }
-                    else
-                    {
-                        SaveAssetDependency(scene_name, assetbundlename);
-                    }
-                    return result;
+                    SceneAsyncLoader loader = new SceneAsyncLoader(assetbundlename, scene_name, mode, unload_assetbundle);
+                    SceneLoadRequest req = new SceneLoadRequest(loader);
+                    StartCoroutine(StartLoadSceneAsync(loader));
+                    return req;
                 }
             }
             catch (System.Exception ex)
@@ -890,6 +876,14 @@ namespace zcode.AssetBundlePacker
         IEnumerator StartLoadAssetAsync(AssetAsyncLoader loader)
         {
             yield return loader.StartLoadAssetAsync(this);
+        }
+
+        /// <summary>
+        ///   异步加载一个场景
+        /// </summary>
+        IEnumerator StartLoadSceneAsync(SceneAsyncLoader loader)
+        {
+            yield return loader.StartLoadSceneAsync(this);
         }
 
         /// <summary>

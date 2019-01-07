@@ -9,9 +9,16 @@ namespace zcode.AssetBundlePacker
     public sealed class SceneLoadRequest : YieldInstruction
     {
         AssetBundleManager.SceneAsyncLoader loader_;
+        AsyncOperation ao_;
+
         internal SceneLoadRequest(AssetBundleManager.SceneAsyncLoader loader)
         {
             loader_ = loader;
+        }
+
+        internal SceneLoadRequest(AsyncOperation ao)
+        {
+            ao_ = ao;
         }
 
         ~SceneLoadRequest()
@@ -24,7 +31,7 @@ namespace zcode.AssetBundlePacker
         /// </summary>
         public bool IsDone
         {
-            get { return loader_.IsDone; }
+            get { return loader_ != null ? loader_.IsDone : (ao_ != null ? ao_.isDone : false); }
         }
 
         /// <summary>
@@ -32,15 +39,7 @@ namespace zcode.AssetBundlePacker
         /// </summary>
         public float Progress
         {
-            get { return loader_.Progress; }
-        }
-
-        /// <summary>
-        /// 场景名称
-        /// </summary>
-        public string SceneName
-        {
-            get { return loader_.SceneName; }
+            get { return loader_ != null ? loader_.Progress : (ao_ != null ? ao_.progress : 0); }
         }
     }
 }

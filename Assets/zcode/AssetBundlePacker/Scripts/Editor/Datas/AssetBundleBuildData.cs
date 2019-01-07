@@ -694,7 +694,8 @@ namespace zcode.AssetBundlePacker
                 var files = assets.GetFiles("*.unity", SearchOption.AllDirectories);
                 foreach (var f in files)
                 {
-                    if(progress_report != null) { progress_report(f.FullName); }
+                    string localName = EditorCommon.AbsoluteToRelativePath(f.FullName);
+                    if (progress_report != null) { progress_report(f.FullName); }
                     var scene = old.Scenes.Find((elem) =>
                     {
                         return elem.ScenePath == f.FullName;
@@ -758,22 +759,29 @@ namespace zcode.AssetBundlePacker
         static void SyncSceneAssetConfig(AssetBundleBuildData.SceneBuild.Element element, ResourcesManifestData data
             , bool is_write)
         {
-            string path = element.ScenePath.ToLower();
-            string key = EditorCommon.ConvertToAssetBundleName(path);
-            ResourcesManifestData.AssetBundle ab_data;
-            if (data.AssetBundles.TryGetValue(key, out ab_data))
+            string localPath = EditorCommon.AbsoluteToRelativePath(element.ScenePath);
+            localPath = localPath.ToLower();
+
+            // 场景文件与配置文件
+            string[] files = new string[] { localPath, SceneConfig.GetSceneConfigPath(localPath).ToLower() };
+            foreach (var path in files)
             {
-                if (is_write)
+                string key = EditorCommon.ConvertToAssetBundleName(path);
+                ResourcesManifestData.AssetBundle ab_data;
+                if (data.AssetBundles.TryGetValue(key, out ab_data))
                 {
-                    ab_data.IsCompress = element.IsCompress;
-                    ab_data.IsNative = element.IsNative;
-                    ab_data.IsPermanent = false;
-                    ab_data.IsStartupLoad = false;
-                }
-                else
-                {
-                    element.IsCompress = ab_data.IsCompress;
-                    element.IsNative = ab_data.IsNative;
+                    if (is_write)
+                    {
+                        ab_data.IsCompress = element.IsCompress;
+                        ab_data.IsNative = element.IsNative;
+                        ab_data.IsPermanent = false;
+                        ab_data.IsStartupLoad = false;
+                    }
+                    else
+                    {
+                        element.IsCompress = ab_data.IsCompress;
+                        element.IsNative = ab_data.IsNative;
+                    }
                 }
             }
         }

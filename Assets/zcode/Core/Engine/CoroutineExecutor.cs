@@ -72,6 +72,28 @@ namespace zcode
         }
 
         /// <summary>
+        ///   执行
+        /// </summary>
+        void Do(zcode.AssetBundlePacker.SceneLoadRequest req, System.Action callback)
+        {
+            DoneCallback = callback;
+            StartCoroutine(_WaitForDone(req));
+        }
+        IEnumerator _WaitForDone(zcode.AssetBundlePacker.SceneLoadRequest req)
+        {
+            if (req != null)
+            {
+                while (!req.IsDone)
+                    yield return null;
+            }
+
+            if (DoneCallback != null)
+                DoneCallback();
+
+            Destroy(this.gameObject);
+        }
+
+        /// <summary>
         ///   
         /// </summary>
         public static void Create(AsyncOperation ao, System.Action callback)
@@ -96,5 +118,19 @@ namespace zcode
                 executor.Do(routine, callback);
             }
         }
+
+        /// <summary>
+        ///   
+        /// </summary>
+        public static void Create(zcode.AssetBundlePacker.SceneLoadRequest req, System.Action callback)
+        {
+            GameObject go = new GameObject();
+            CoroutineExecutor executor = go.AddComponent<CoroutineExecutor>();
+            if (executor != null)
+            {
+                executor.Do(req, callback);
+            }
+        }
+
     }
 }
