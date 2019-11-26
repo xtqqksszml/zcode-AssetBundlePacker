@@ -27,7 +27,7 @@ Unity的AssetBundle模块扩展插件，主要目的用于简化AssetBundle打�
 			|-Core							- 公共类、函数等源代码
 	
 ## 如何打包AssetBundle
-	AssetBundle打包方法可通过Unity编辑器下打开"AssetBundle/Instructions"菜单项打开Instructions窗口，里面包含详细的打包说明与注意事项。
+	可通过Unity编辑器下打开"AssetBundle/Instructions"菜单项打开Instructions窗口，里面包含详细的打包说明与注意事项。
 	
 ## 如何使用
 	直接使用Unity打开，Assets/AssetBundlePacker-Examples目录下包含多个例子，展示了AssetBundlePacker的主要功能与用法。
