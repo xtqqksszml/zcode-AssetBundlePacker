@@ -700,15 +700,19 @@ namespace zcode
                         rs.FS.Write(rs.Buffer, 0, read);
                         rs.FS.Flush();
                         CompletedLength += read;
+
+                        if (notify_callback_ != null)
+                            notify_callback_(this, (long)read);
+
                         _BeginRead(new AsyncCallback(_OnReadCallback));
                     }
                     else
                     {
                         OnFinish();
-                    }
 
-                    if (notify_callback_ != null)
-                        notify_callback_(this, (long)read);
+                        if (notify_callback_ != null)
+                            notify_callback_(this, (long)read);
+                    }
                 }
             }
             catch(IOException e)
